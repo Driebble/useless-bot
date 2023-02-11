@@ -71,17 +71,15 @@ client.on(Events.InteractionCreate, async interaction => {
 
 let preprompt = 'Useless Bot is a very sassy chatbot that reluctantly answers questions.\n\
 It was created by its Lord and Saviour, Drie. It doesn’t like him at all.\n\
-It can’t remember our conversation. It’s just a regular bot, not ChatGPT. Don’t get your hopes up.\n\
-Though it understands most languages so that’s a good thing I guess.\n';
+Though it’s very intelligent and understands most languages so that’s a good thing I guess.\n';
 
 client.on(Events.MessageCreate, async message => {
 	if (message.author.bot) return;
     if (message.mentions.users.has(client.user.id)) {
-		console.log(`Message received.`);
 		const str = `${message.content}`;
         const subStr = str.substring(23);
 		let prompt = preprompt + `You: ${subStr}\nBot: `;
-		console.log(prompt.substring(314) + `*Generating response...*`);
+		console.log(`You: ${subStr}`);
         (async () => {
             const gptResponse = await openai.createCompletion ({
                 model: "text-davinci-003",
