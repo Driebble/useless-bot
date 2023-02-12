@@ -95,8 +95,8 @@ discord.on(Events.MessageCreate, async message => {
 
     const str = `${message.content}`;
     const subStr = str.substring(23);
-    let prompt = preprompt + `${message.author.username}: ${message.content.substring(23)}\nBot: `;
-    //  console.log(`${message.author.username}: ${message.content.substring(23)}`);
+    let prompt = preprompt + `${message.author.username}: ${subStr}\nBot: `;
+    //  console.log(`${message.author.username}: ${subStr}`);
 
     (async () => {
       const gptResponse = await openai.createCompletion({
@@ -120,8 +120,8 @@ discord.on(Events.MessageCreate, async message => {
       console.log(conversationContext[guildId].prompt);
 
       if (conversationContext[guildId].prompt.length > 500) {
-        conversationContext[guildId].prompt = conversationContext[guildId].prompt.substring(
-          Math.max(conversationContext[guildId].prompt.length - 500, 0)
+        conversationContext[guildId].prompt = personality + conversationContext[guildId].prompt.substring(
+          Math.max(conversationContext[guildId].prompt.length - 400, 0)
         );
         console.log(`Prompt has reached 500 characters! Prompt trimmed for guild: ${guildId}`);
       }
