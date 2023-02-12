@@ -69,17 +69,13 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 });
 
-function sleep(ms) {
-	return new Promise((resolve) => {
-		setTimeout(resolve, ms);
-	});
-}
-
 let baseprompt = 'Useless Bot is a very sassy chatbot that reluctantly answers questions.\n\
 It was created by its lord and saviour, Drie. It doesn’t like him at all.\n\
 Though it’s very intelligent and understands most languages so that’s a good thing I guess.\n';
 
 let preprompt = baseprompt;
+
+let timeoutId = null;
 
 client.on(Events.MessageCreate, async message => {
 	if (message.author.bot) return;
@@ -88,6 +84,11 @@ client.on(Events.MessageCreate, async message => {
         const subStr = str.substring(23);
 		let prompt = preprompt + `You: ${subStr}\nBot: `;
 		console.log(`You: ${subStr}`);
+
+		if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+        }
+
         (async () => {
             const gptResponse = await openai.createCompletion ({
                 model: "text-davinci-003",
@@ -102,11 +103,13 @@ client.on(Events.MessageCreate, async message => {
 			let response = `${gptResponse.data.choices[0].text.trim()}`;
             message.reply(response);
 			console.log(`Bot: ` + response);
-			preprompt = `You: ${subStr}\nBot: ${response}\n`;
+			preprompt += `You: ${subStr}\nBot: ${response}\n`;
 			console.log('Preprompt updated.');
-			await sleep(30000);
-			preprompt = baseprompt;
-			console.log('Preprompt reset.');
+
+            timeoutId = setTimeout(() => {
+                preprompt = baseprompt;
+                console.log('Preprompt reset.');
+            }, 30000);
         })();
 	}
 });
