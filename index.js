@@ -31,8 +31,7 @@ for (const file of commandFiles) {
 }
 
 const statuses = [
-  { status: `Distractible`, type: ActivityType.Listening },
-	{ status: `The WAN Show`, type: ActivityType.Listening },
+  { status: `Distractible`, type: ActivityType.Listening },{ status: `The WAN Show`, type: ActivityType.Listening },
   { status: `The Last of Us`, type: ActivityType.Watching },
   { status: `Linus Tech Tips`, type: ActivityType.Watching },
   { status: `Game Changer`, type: ActivityType.Watching },
