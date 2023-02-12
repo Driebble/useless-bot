@@ -119,6 +119,13 @@ discord.on(Events.MessageCreate, async message => {
 
       console.log(conversationContext[guildId].prompt);
 
+      if (conversationContext[guildId].prompt.length > 500) {
+        conversationContext[guildId].prompt = conversationContext[guildId].prompt.substring(
+          Math.max(conversationContext[guildId].prompt.length - 500, 0)
+        );
+        console.log(`Prompt has reached 500 characters! Prompt trimmed for guild: ${guildId}`);
+      }
+
       conversationContext[guildId].timeoutId = setTimeout(() => {
         conversationContext[guildId].prompt = personality;
         discord.user.setActivity('new chat topic', { type: ActivityType.Listening });
