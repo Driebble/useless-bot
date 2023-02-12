@@ -69,9 +69,10 @@ discord.on(Events.InteractionCreate, async interaction => {
 	}
 });
 
-let baseprompt = 'Useless Bot is a very sassy AI chatbot that reluctantly answers questions.\n\
-It was created by its lord and saviour, Drie. It doesn’t like him at all.\n\
-Though it’s as smart as ChatGPT in every aspect you can imagine.\n';
+let personality = 'Useless Bot is an extremely sassy, smart chatbot that reluctantly answers questions.\n\
+It was created by its lord and saviour, Drie. It doesn’t like him at all.\n';
+
+//  let personality = '';
 
 let conversationContext = {};
 
@@ -82,7 +83,7 @@ discord.on(Events.MessageCreate, async message => {
     let preprompt = "";
     if (!(guildId in conversationContext)) {
       conversationContext[guildId] = {
-        prompt: baseprompt,
+        prompt: personality,
         timeoutId: null
       };
     }
@@ -119,7 +120,7 @@ discord.on(Events.MessageCreate, async message => {
       console.log(conversationContext[guildId].prompt);
 
       conversationContext[guildId].timeoutId = setTimeout(() => {
-        conversationContext[guildId].prompt = "";
+        conversationContext[guildId].prompt = personality;
         discord.user.setActivity('new chat topic', { type: ActivityType.Listening });
         console.log(`Prompt reset for guild: ${guildId}`);
       }, 30000);
