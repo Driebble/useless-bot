@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, ActivityType, GatewayIntentBits, hideLinkEmbed } = require('discord.js');
+const { Client, Collection, Events, ActivityType, GatewayIntentBits } = require('discord.js');
 const { Configuration, OpenAIApi } = require("openai");
 
 require('dotenv').config();
@@ -82,12 +82,11 @@ client.on(Events.MessageCreate, async message => {
     if (message.mentions.users.has(client.user.id)) {
 		const str = `${message.content}`;
         const subStr = str.substring(23);
+
 		let prompt = preprompt + `You: ${subStr}\nBot: `;
 		console.log(`You: ${subStr}`);
 
-		if (timeoutId !== null) {
-            clearTimeout(timeoutId);
-        }
+		if (timeoutId !== null) { clearTimeout(timeoutId); };
 
         (async () => {
             const gptResponse = await openai.createCompletion ({
@@ -100,9 +99,11 @@ client.on(Events.MessageCreate, async message => {
                 frequency_penalty: 0.6,
 				stop: [" You:", " Bot:"],
             });
+			
 			let response = `${gptResponse.data.choices[0].text.trim()}`;
             message.reply(response);
 			console.log(`Bot: ` + response);
+
 			preprompt += `You: ${subStr}\nBot: ${response}\n`;
 			console.log('Preprompt updated.');
 
