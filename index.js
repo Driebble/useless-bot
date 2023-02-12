@@ -4,26 +4,6 @@ const path = require('node:path');
 
 const { Client, Collection, Events, ActivityType, GatewayIntentBits } = require('discord.js');
 const { Configuration, OpenAIApi } = require("openai");
-const { MongoClient, ServerApiVersion } = require('mongodb');
-
-const mongo = new MongoClient(process.env.MONGODBURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverApi: ServerApiVersion.v1,
-});
-
-async function run() {
-  try {
-    await mongo.connect();
-
-    await mongo.db("UB_Context").command({ ping: 1});
-    console.log("Connected successfully to server.");
-
-  } finally {
-    await mongo.close();
-  }
-}
-run().catch(console.dir);
 
 const discord = new Client({ intents: [
 	GatewayIntentBits.Guilds,
@@ -91,25 +71,34 @@ discord.on(Events.InteractionCreate, async interaction => {
 
 let baseprompt = 'Useless Bot is a very sassy AI chatbot that reluctantly answers questions.\n\
 It was created by its lord and saviour, Drie. It doesn’t like him at all.\n\
-Though it’s very intelligent in every aspect you can imagine and understands most languages.\n';
+Though it’s as smart as ChatGPT in every aspect you can imagine.\n';
 
-let preprompt = baseprompt;
-
-let timeoutId = null;
+let conversationContext = {};
 
 discord.on(Events.MessageCreate, async message => {
-	if (message.author.bot) return;
-    if (message.mentions.users.has(discord.user.id)) {
-		const str = `${message.content}`;
+  if (message.author.bot) return;
+  if (message.mentions.users.has(discord.user.id)) {
+    const guildId = message.guild.id;
+    let preprompt = "";
+    if (!(guildId in conversationContext)) {
+      conversationContext[guildId] = {
+        prompt: baseprompt,
+        timeoutId: null
+      };
+    }
+    preprompt = conversationContext[guildId].prompt;
+
+    if (conversationContext[guildId].timeoutId !== null) {
+      clearTimeout(conversationContext[guildId].timeoutId);
+    }
+
+    const str = `${message.content}`;
     const subStr = str.substring(23);
-
-		let prompt = preprompt + `${message.author.username}: ${subStr}\nBot: `;
-		console.log(`${message.author.username}: ${subStr}`);
-
-		if (timeoutId !== null) { clearTimeout(timeoutId); }
+    let prompt = preprompt + `${message.author.username}: ${message.content.substring(23)}\nBot: `;
+    //  console.log(`${message.author.username}: ${message.content.substring(23)}`);
 
     (async () => {
-      const gptResponse = await openai.createCompletion ({
+      const gptResponse = await openai.createCompletion({
         model: "text-davinci-003",
         prompt: prompt,
         max_tokens: 100,
@@ -119,21 +108,23 @@ discord.on(Events.MessageCreate, async message => {
         frequency_penalty: 0.6,
         stop: [` ${message.author.username}:`, " Bot:"],
       });
-			
-			let response = `${gptResponse.data.choices[0].text.trim()}`;
+
+      let response = `${gptResponse.data.choices[0].text.trim()}`;
       message.reply(response);
-			console.log(`Bot: ` + response);
+      //  console.log(`Bot: ` + response);
 
-			preprompt += `${message.author.username}: ${subStr}\nBot: ${response}\n`;
-			console.log('Preprompt updated.');
+      conversationContext[guildId].prompt += `${message.author.username}: ${subStr}\nBot: ${response}\n`;
+      console.log('Prompt updated for guild: ' + guildId);
 
-      timeoutId = setTimeout(() => {
-        preprompt = baseprompt;
-				discord.user.setActivity('new chat topic', { type: ActivityType.Listening });
-        console.log('Preprompt reset.');
+      console.log(conversationContext[guildId].prompt);
+
+      conversationContext[guildId].timeoutId = setTimeout(() => {
+        conversationContext[guildId].prompt = "";
+        discord.user.setActivity('new chat topic', { type: ActivityType.Listening });
+        console.log(`Prompt reset for guild: ${guildId}`);
       }, 30000);
     })();
-	}
+  }
 });
 
 discord.login(process.env.TOKEN);
