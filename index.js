@@ -86,7 +86,7 @@ client.on(Events.MessageCreate, async message => {
 		let prompt = preprompt + `You: ${subStr}\nBot: `;
 		console.log(`You: ${subStr}`);
 
-		if (timeoutId !== null) { clearTimeout(timeoutId); };
+		if (timeoutId !== null) { clearTimeout(timeoutId); }
 
         (async () => {
             const gptResponse = await openai.createCompletion ({

@@ -1,15 +1,30 @@
 {
   "name": "useless-bot",
-  "private": true,
-  "version": "1.0.0",
-  "description": "Useless Discord Bot by Drie",
+  "version": "2.0.0",
+  "description": "Drie's smart but useless bot.",
   "main": "index.js",
+  "scripts": {
+    "test": "Hey"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Driebble/useless-bot.git"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "useless",
+    "chatbot"
+  ],
   "author": "Drie",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Driebble/useless-bot/issues"
+  },
+  "homepage": "https://github.com/Driebble/useless-bot#readme",
   "dependencies": {
     "discord.js": "^14.7.1",
     "dotenv": "^16.0.3",
-    "forever": "^4.0.3",
     "openai": "^3.1.0"
   }
 }
