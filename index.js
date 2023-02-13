@@ -113,7 +113,7 @@ discord.on(Events.MessageCreate, async message => {
         model: "text-davinci-003",
         prompt: prompt,
         temperature: 1,
-        max_tokens: 100,
+        max_tokens: 50,
         top_p: 0.5,
         presence_penalty: 0.25,
         frequency_penalty: 0.25,
