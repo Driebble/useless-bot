@@ -100,7 +100,7 @@ discord.on(Events.MessageCreate, async message => {
     }
     
     // Substring(23) to remove the bot's Client ID mention from user's message. The number may vary for each bot.
-    let conversation = `${message.author.username}: ${message.content.substring(23)}\nBot: `;
+    let conversation = `${message.author.username}: ${message.content.substring(23)}\nBot:`;
 
     // Main formula of how the prompt is constructed.
     let prompt = personality + context + conversation;
@@ -128,9 +128,9 @@ discord.on(Events.MessageCreate, async message => {
       console.log(`${conversationContext[guildId][channelId].context}`);
 
       // Context length based on words on which context trimming will begin. Default is 100.
-      if (conversationContext[guildId][channelId].context.split(" ").length > 100) {
+      if (conversationContext[guildId][channelId].context.split(" ").length > 75) {
         const words = conversationContext[guildId][channelId].context.split(" ");
-        conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - 100, 0)).join(" ");
+        conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - 75, 0)).join(" ");
         conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.replace(/\n\n/g, '\n')
         const match = conversationContext[guildId][channelId].context.match(/(\n\w+: )/);
         if (match) {
