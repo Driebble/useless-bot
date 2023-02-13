@@ -140,7 +140,8 @@ discord.on(Events.MessageCreate, async message => {
           }
         }
         conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.trim() + "\n";
-        console.log(`#${channelName} in ${guildName} has reached the context limit threshold!\nContext trimming started for #${channelName} in ${guildName}.`);
+        console.log(`#${channelName} in ${guildName} has reached the context limit threshold!`);
+        console.log(`Context trimming started for #${channelName} in ${guildName}.`);
         console.log(`${conversationContext[guildId][channelId].context}`);
       }
 
