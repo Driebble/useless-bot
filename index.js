@@ -112,11 +112,11 @@ discord.on(Events.MessageCreate, async message => {
       const gptResponse = await openai.createCompletion({
         model: "text-davinci-003",
         prompt: prompt,
+        temperature: 1,
         max_tokens: 100,
-        temperature: 0.9,
-        top_p: 1,
-        presence_penalty: 0.0,
-        frequency_penalty: 0.6,
+        top_p: 0.5,
+        presence_penalty: 0.25,
+        frequency_penalty: 0.25,
         stop: [` ${message.author.username}:`, " Bot:"],
       });
 
@@ -127,10 +127,10 @@ discord.on(Events.MessageCreate, async message => {
       console.log(`Context updated for #${channelName} in ${guildName}.`);
       console.log(`${conversationContext[guildId][channelId].context}`);
 
-      // Context length based on words on which context trimming will begin. Default is 150.
-      if (conversationContext[guildId][channelId].context.split(" ").length > 150) {
+      // Context length based on words on which context trimming will begin. Default is 100.
+      if (conversationContext[guildId][channelId].context.split(" ").length > 100) {
         const words = conversationContext[guildId][channelId].context.split(" ");
-        conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - 150, 0)).join(" ");
+        conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - 100, 0)).join(" ");
         conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.replace(/\n\n/g, '\n')
         const match = conversationContext[guildId][channelId].context.match(/(\n\w+: )/);
         if (match) {
