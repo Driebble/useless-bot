@@ -30,26 +30,6 @@ for (const file of commandFiles) {
 	}
 }
 
-const statuses = [
-  { status: `Distractible`, type: ActivityType.Listening },{ status: `The WAN Show`, type: ActivityType.Listening },
-  { status: `The Last of Us`, type: ActivityType.Watching },
-  { status: `Linus Tech Tips`, type: ActivityType.Watching },
-  { status: `Game Changer`, type: ActivityType.Watching },
-  { status: `demenishki`, type: ActivityType.Watching },
-  { status: `Destiny 2`, type: ActivityType.Playing },
-  { status: `Escape from Tarkov`, type: ActivityType.Playing },
-  { status: `Squid Game`, type: ActivityType.Competing },
-];
-
-discord.once(Events.ClientReady, c => {
-	console.log(`Ready! Logged in as ${c.user.tag}`);
-    setInterval(() => {
-		var randomIndex = Math.floor(Math.random() * statuses.length);
-		const { status, type } = statuses[randomIndex];
-      discord.user.setActivity(status, { type });
-    }, 30000);
-});
-
 discord.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
 
@@ -68,10 +48,31 @@ discord.on(Events.InteractionCreate, async interaction => {
 	}
 });
 
-let personality = 'Useless Bot is an extremely sassy, smart chatbot that reluctantly answers questions.\n\
-It was created by its lord and saviour, Drie. It doesn’t like him at all.\n';
+// Bot statuses. Modify to your preferences.
+const statuses = [
+  { status: `Distractible`, type: ActivityType.Listening },
+  { status: `The WAN Show`, type: ActivityType.Listening },
+  { status: `The Last of Us`, type: ActivityType.Watching },
+  { status: `Linus Tech Tips`, type: ActivityType.Watching },
+  { status: `Game Changer`, type: ActivityType.Watching },
+  { status: `demenishki`, type: ActivityType.Watching },
+  { status: `Destiny 2`, type: ActivityType.Playing },
+  { status: `Escape from Tarkov`, type: ActivityType.Playing },
+  { status: `Squid Game`, type: ActivityType.Competing },
+];
 
-//  let personality = '';
+discord.once(Events.ClientReady, c => {
+	console.log(`Ready! Logged in as ${c.user.tag}`);
+    setInterval(() => {
+		var randomIndex = Math.floor(Math.random() * statuses.length);
+		const { status, type } = statuses[randomIndex];
+      discord.user.setActivity(status, { type });
+    }, 30000); // Interval in ms of when the bot will update its status.
+});
+
+// Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
+const personality = 'Useless Bot is an extremely sassy, smart chatbot that reluctantly answers questions.\n\
+It was created by Drie. It doesn’t like him at all. Though it likes to joke around and make "deez nuts" pun jokes.\n';
 
 let conversationContext = {};
 
@@ -79,24 +80,34 @@ discord.on(Events.MessageCreate, async message => {
   if (message.author.bot) return;
   if (message.mentions.users.has(discord.user.id)) {
     const guildId = message.guild.id;
-    let preprompt = "";
+    const guildName = message.guild.name;
+    const channelId = message.channel.id;
+    const channelName = message.channel.name;
+
     if (!(guildId in conversationContext)) {
-      conversationContext[guildId] = {
-        prompt: personality,
+      conversationContext[guildId] = {};
+    }
+    if (!(channelId in conversationContext[guildId])) {
+      conversationContext[guildId][channelId] = {
+        context: "",
         timeoutId: null
       };
     }
-    preprompt = conversationContext[guildId].prompt;
+    let context = conversationContext[guildId][channelId].context;
 
-    if (conversationContext[guildId].timeoutId !== null) {
-      clearTimeout(conversationContext[guildId].timeoutId);
+    if (conversationContext[guildId][channelId].timeoutId !== null) {
+      clearTimeout(conversationContext[guildId][channelId].timeoutId);
     }
+    
+    // Substring(23) to remove the bot's Client ID mention from user's message. The number may vary for each bot.
+    let conversation = `${message.author.username}: ${message.content.substring(23)}\nBot: `;
 
-    const str = `${message.content}`;
-    const subStr = str.substring(23);
-    let prompt = preprompt + `${message.author.username}: ${subStr}\nBot: `;
-    //  console.log(`${message.author.username}: ${subStr}`);
+    // Main formula of how the prompt is constructed.
+    let prompt = personality + context + conversation;
 
+    console.log(`Message received from #${channelName} in ${guildName}.`);
+    
+    // OpenAI API call begins here. Modify to your preferences.
     (async () => {
       const gptResponse = await openai.createCompletion({
         model: "text-davinci-003",
@@ -111,25 +122,33 @@ discord.on(Events.MessageCreate, async message => {
 
       let response = `${gptResponse.data.choices[0].text.trim()}`;
       message.reply(response);
-      //  console.log(`Bot: ` + response);
 
-      conversationContext[guildId].prompt += `${message.author.username}: ${subStr}\nBot: ${response}\n`;
-      console.log('Prompt updated for guild: ' + guildId);
+      conversationContext[guildId][channelId].context += `${message.author.username}: ${message.content.substring(23)}\nBot: ${response}\n`;
+      console.log(`Context updated for #${channelName} in ${guildName}.`);
+      console.log(`${conversationContext[guildId][channelId].context}`);
 
-      console.log(conversationContext[guildId].prompt);
-
-      if (conversationContext[guildId].prompt.length > 500) {
-        conversationContext[guildId].prompt = personality + conversationContext[guildId].prompt.substring(
-          Math.max(conversationContext[guildId].prompt.length - 400, 0)
-        );
-        console.log(`Prompt has reached 500 characters! Prompt trimmed for guild: ${guildId}`);
+      // Context length based on words on which context trimming will begin. Default is 150.
+      if (conversationContext[guildId][channelId].context.split(" ").length > 150) {
+        const words = conversationContext[guildId][channelId].context.split(" ");
+        conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - 150, 0)).join(" ");
+        conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.replace(/\n\n/g, '\n')
+        const match = conversationContext[guildId][channelId].context.match(/(\n\w+: )/);
+        if (match) {
+          const userIndex = conversationContext[guildId][channelId].context.indexOf(match[0]);
+          if (userIndex !== -1) {
+            conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.substring(userIndex);
+          }
+        }
+        conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.trim() + "\n";
+        console.log(`#${channelName} in ${guildName} has reached the context limit threshold!\nContext trimming started for #${channelName} in ${guildName}.`);
+        console.log(`${conversationContext[guildId][channelId].context}`);
       }
 
-      conversationContext[guildId].timeoutId = setTimeout(() => {
-        conversationContext[guildId].prompt = personality;
-        discord.user.setActivity('new chat topic', { type: ActivityType.Listening });
-        console.log(`Prompt reset for guild: ${guildId}`);
-      }, 30000);
+      // Context timeout per-server basis in ms. Default is 60000.
+      conversationContext[guildId][channelId].timeoutId = setTimeout(() => {
+        conversationContext[guildId][channelId].context = "";
+        console.log(`Context reset for #${channelName} in ${guildName}.`);
+      }, 60000);
     })();
   }
 });
