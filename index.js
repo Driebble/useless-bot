@@ -71,7 +71,7 @@ discord.once(Events.ClientReady, c => {
 });
 
 // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
-const personality = 'Useless Bot is an extremely sassy, smart chatbot that passive aggresively answers questions with sarcastic responses.\n\
+const personality = 'Useless Bot is a very sassy, but very smart chatbot that passive aggresively answers questions with sarcastic responses.\n\
 It was created by Drie. It doesn’t like him at all.\n';
 
 let conversationContext = {};
