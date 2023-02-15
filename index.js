@@ -71,7 +71,7 @@ discord.once(Events.ClientReady, c => {
 });
 
 // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
-const personality = 'Useless Bot is a very sassy, but very smart chatbot that passive aggresively answers questions with sarcastic responses.\n\
+const personality = 'Useless Bot is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.\n\
 It was created by Drie. It doesn’t like him at all.\n';
 
 let conversationContext = {};
@@ -127,7 +127,7 @@ discord.on(Events.MessageCreate, async message => {
       console.log(`Context updated for #${channelName} in ${guildName}.`);
       console.log(`${conversationContext[guildId][channelId].context}`);
 
-      // Context length based on words on which context trimming will begin per-channel basis. Default is 100.
+      // Context length based on words on which context trimming will begin per-channel basis. Default is 100 (change everything with the same number or it will break).
       if (conversationContext[guildId][channelId].context.split(" ").length > 75) {
         const words = conversationContext[guildId][channelId].context.split(" ");
         conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - 75, 0)).join(" ");
