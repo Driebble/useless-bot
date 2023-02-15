@@ -84,7 +84,7 @@ discord.on(Events.MessageCreate, async message => {
 
     // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
     const personality = `Useless Bot is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.\n\
-It was created by Drie. It doesn’t like him at all. It's currently talking in channel "${channelName}" in server "${guildName}".\n\
+It was created by Drie. It doesn’t like him at all. It's currently talking in channel #${channelName} in server ${guildName}.\n\
 It has fellow bot friends in the Discord: Dyno, Hydra, and GitBot, but they can't chat like Useless Bot can.\n`;
 
     if (!(guildId in conversationContext)) {
@@ -102,8 +102,9 @@ It has fellow bot friends in the Discord: Dyno, Hydra, and GitBot, but they can'
       clearTimeout(conversationContext[guildId][channelId].timeoutId);
     }
     
-    // Substring(23) to remove the bot's Client ID mention from user's message. The number may vary for each bot.
-    let conversation = `${message.author.username}: ${message.content.substring(23)}\nBot:`;
+    // botIdLength to remove the bot's Client ID mention from user's message. The number may vary for each bot. Mine is 23.
+    const botIdLength = 23;
+    let conversation = `${message.author.username}: ${message.content.substring(botIdLength)}\nBot:`;
 
     // Main formula of how the prompt is constructed.
     let prompt = personality + context + conversation;
@@ -126,14 +127,15 @@ It has fellow bot friends in the Discord: Dyno, Hydra, and GitBot, but they can'
       let response = `${gptResponse.data.choices[0].text.trim()}`;
       message.reply(response);
 
-      conversationContext[guildId][channelId].context += `${message.author.username}: ${message.content.substring(23)}\nBot: ${response}\n`;
+      conversationContext[guildId][channelId].context += `${message.author.username}: ${message.content.substring(botIdLength)}\nBot: ${response}\n`;
       console.log(`Context updated for #${channelName} in ${guildName}.`);
       console.log(`${conversationContext[guildId][channelId].context}`);
 
-      // Context length based on words on which context trimming will begin per-channel basis. Default is 100 (change everything with the same number or it will break).
-      if (conversationContext[guildId][channelId].context.split(" ").length > 75) {
+      // Context length based on words on which context trimming will begin per-channel basis. Default is 100.
+      const contextThreshold = 75;
+      if (conversationContext[guildId][channelId].context.split(" ").length > contextThreshold) {
         const words = conversationContext[guildId][channelId].context.split(" ");
-        conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - 75, 0)).join(" ");
+        conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - contextThreshold, 0)).join(" ");
         conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.replace(/\n\n/g, '\n')
         const match = conversationContext[guildId][channelId].context.match(/(\n\w+: )/);
         if (match) {
@@ -152,7 +154,7 @@ It has fellow bot friends in the Discord: Dyno, Hydra, and GitBot, but they can'
       conversationContext[guildId][channelId].timeoutId = setTimeout(() => {
         conversationContext[guildId][channelId].context = "";
         console.log(`Context reset for #${channelName} in ${guildName}.`);
-      }, 60000);
+      }, 60000); // <= Set the number here.
     })();
   }
 });
