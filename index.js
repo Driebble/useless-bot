@@ -78,11 +78,11 @@ discord.on(Events.MessageCreate, async message => {
   const channelId = message.channel.id;
   const channelName = message.channel.name;
   const autoreplyChannelId = [
-    '1074600621811965962'
+    // '1074600621811965962'
   ];
   const autoreplyChannelName = [
-    'chatbot',
-    'chat-bot'
+    // 'chatbot',
+    // 'chat-bot',
   ];
 
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
@@ -107,7 +107,7 @@ discord.on(Events.MessageCreate, async message => {
     return gptResponse;
   }
 
-  async function processMessage(message, conversationContext, botIdLength) {
+  async function processMessage(message, conversationContext, botIdLength, messageType) {
     if (!(guildId in conversationContext)) {
       conversationContext[guildId] = {};
     }
@@ -164,14 +164,12 @@ discord.on(Events.MessageCreate, async message => {
 
   if (message.author.bot) return;
 
-  if (autoreplyChannelId.includes(message.channel.id) || autoreplyChannelName.includes(message.channel.name)) {
-    processMessage(message, conversationContext);
-  }
-
   if (message.mentions.users.has(discord.user.id)) {
     let botIdLength = 23; // botIdLength to remove the bot's Client ID mention from user's message. The number may vary for each bot. Mine is 23.
-    processMessage(message, conversationContext, botIdLength);
-  }
+    processMessage(message, conversationContext, botIdLength, messageType);
+  } else if (autoreplyChannelId.includes(message.channel.id) || autoreplyChannelName.includes(message.channel.name)) {
+    processMessage(message, conversationContext, messageType);
+  } 
 });
 
 discord.login(process.env.TOKEN);
