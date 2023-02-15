@@ -70,19 +70,22 @@ discord.once(Events.ClientReady, c => {
     }, 30000); // Interval in ms of when the bot will update its status.
 });
 
-// Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
-const personality = 'Useless Bot is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.\n\
-It was created by Drie. It doesn’t like him at all.\n';
-
 let conversationContext = {};
 
 discord.on(Events.MessageCreate, async message => {
+  const guildId = message.guild.id;
+  const guildName = message.guild.name;
+  const channelId = message.channel.id;
+  const channelName = message.channel.name;
+  
   if (message.author.bot) return;
+
   if (message.mentions.users.has(discord.user.id)) {
-    const guildId = message.guild.id;
-    const guildName = message.guild.name;
-    const channelId = message.channel.id;
-    const channelName = message.channel.name;
+
+    // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
+    const personality = `Useless Bot is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.\n\
+It was created by Drie. It doesn’t like him at all. It's currently talking in channel "${channelName}" in server "${guildName}".\n\
+It has fellow bot friends in the Discord: Dyno, Hydra, and GitBot, but they can't chat like Useless Bot can.\n`;
 
     if (!(guildId in conversationContext)) {
       conversationContext[guildId] = {};
