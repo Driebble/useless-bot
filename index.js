@@ -107,7 +107,7 @@ discord.on(Events.MessageCreate, async message => {
     return gptResponse;
   }
 
-  async function processMessage(message, conversationContext, botIdLength, messageType) {
+  async function processMessage(message, conversationContext, botIdLength) {
     if (!(guildId in conversationContext)) {
       conversationContext[guildId] = {};
     }
@@ -166,9 +166,9 @@ discord.on(Events.MessageCreate, async message => {
 
   if (message.mentions.users.has(discord.user.id)) {
     let botIdLength = 23; // botIdLength to remove the bot's Client ID mention from user's message. The number may vary for each bot. Mine is 23.
-    processMessage(message, conversationContext, botIdLength, messageType);
+    processMessage(message, conversationContext, botIdLength);
   } else if (autoreplyChannelId.includes(message.channel.id) || autoreplyChannelName.includes(message.channel.name)) {
-    processMessage(message, conversationContext, messageType);
+    processMessage(message, conversationContext);
   } 
 });
 
