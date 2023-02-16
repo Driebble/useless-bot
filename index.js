@@ -74,8 +74,11 @@ discord.once(Events.ClientReady, c => {
     }, 30000); // Interval in ms of when the bot will update its status.
 });
 
+// Declares empty string for conversation context.
 let conversationContext = {};
 
+// Function will check if guildId and channelId are present in conversationContext.
+// If not, they will be inserted and prepared to store the context.
 function contextCheck(guildId, channelId) {
   if (!(guildId in conversationContext)) {
     conversationContext[guildId] = {};
@@ -86,6 +89,7 @@ function contextCheck(guildId, channelId) {
       timeoutId: null
     };
   }
+  // This checks if timeoutId has value. If yes it will be reset.
   if (conversationContext[guildId][channelId].timeoutId !== null) {
     clearTimeout(conversationContext[guildId][channelId].timeoutId);
   }
