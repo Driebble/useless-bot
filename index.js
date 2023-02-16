@@ -5,6 +5,10 @@ const path = require('node:path');
 const { Client, Collection, Events, ActivityType, GatewayIntentBits } = require('discord.js');
 const { Configuration, OpenAIApi } = require("openai");
 
+const currentDate = new Date();
+const dateString = currentDate.toLocaleString();
+console.log(dateString);
+
 const discord = new Client({ intents: [
 	GatewayIntentBits.Guilds,
 	GatewayIntentBits.GuildMessages,
@@ -72,6 +76,21 @@ discord.once(Events.ClientReady, c => {
 
 let conversationContext = {};
 
+function contextCheck(guildId, channelId) {
+  if (!(guildId in conversationContext)) {
+    conversationContext[guildId] = {};
+  }
+  if (!(channelId in conversationContext[guildId])) {
+    conversationContext[guildId][channelId] = {
+      context: "",
+      timeoutId: null
+    };
+  }
+  if (conversationContext[guildId][channelId].timeoutId !== null) {
+    clearTimeout(conversationContext[guildId][channelId].timeoutId);
+  }
+}
+
 discord.on(Events.MessageCreate, async message => {
   const guildId = message.guild.id;
   const guildName = message.guild.name;
@@ -88,7 +107,7 @@ discord.on(Events.MessageCreate, async message => {
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
     Useless Bot is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.
-    He was created by Drie. He doesn't like him at all. He's currently talking in channel #${channelName} in server ${guildName}.
+    He was created by Drie. He doesn't like Drie at all. He's currently in channel #${channelName} in server ${guildName} at ${currentDate}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI API call begins here. Modify to your preferences.
@@ -107,18 +126,7 @@ discord.on(Events.MessageCreate, async message => {
   }
 
   async function processMessage(message, conversationContext, botIdLength) {
-    if (!(guildId in conversationContext)) {
-      conversationContext[guildId] = {};
-    }
-    if (!(channelId in conversationContext[guildId])) {
-      conversationContext[guildId][channelId] = {
-        context: "",
-        timeoutId: null
-      };
-    }
-    if (conversationContext[guildId][channelId].timeoutId !== null) {
-      clearTimeout(conversationContext[guildId][channelId].timeoutId);
-    }
+    contextCheck(guildId, channelId);
 
     // Main formula of how the prompt is constructed.
     let context = conversationContext[guildId][channelId].context;
@@ -163,7 +171,12 @@ discord.on(Events.MessageCreate, async message => {
 
   if (message.author.bot) return;
 
-  if (message.mentions.users.has(discord.user.id)) {
+  if (message.mentions.users.has(discord.user.id) && message.content.toLowerCase().includes('reset context')) {
+    message.channel.send('Reinitializing context-based prompt...');
+    contextCheck(guildId, channelId);
+    conversationContext[guildId][channelId].context = "";
+    message.channel.send('Context has been reset.')
+  } else if (message.mentions.users.has(discord.user.id)) {
     let botIdLength = 23; // botIdLength to remove the bot's Client ID mention from user's message. The number may vary for each bot. Mine is 23.
     processMessage(message, conversationContext, botIdLength);
   } else if (autoreplyChannelId.includes(message.channel.id) || autoreplyChannelName.includes(message.channel.name)) {
