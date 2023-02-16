@@ -88,8 +88,7 @@ discord.on(Events.MessageCreate, async message => {
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
     Useless Bot is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.
-    It was created by Drie. It doesn’t like him at all. It's currently talking in channel #${channelName} in server ${guildName}.
-    It has fellow bot friends in the Discord: Dyno, Hydra, and GitBot, but they can't chat like Useless Bot can.
+    He was created by Drie. He doesn't like him at all. He's currently talking in channel #${channelName} in server ${guildName}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI API call begins here. Modify to your preferences.
