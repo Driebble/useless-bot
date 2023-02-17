@@ -5,6 +5,10 @@ const path = require('node:path');
 const { Client, Collection, Events, ActivityType, GatewayIntentBits } = require('discord.js');
 const { Configuration, OpenAIApi } = require("openai");
 
+const currentDate = new Date();
+const dateString = currentDate.toLocaleString();
+console.log(dateString);
+
 const discord = new Client({ intents: [
 	GatewayIntentBits.Guilds,
 	GatewayIntentBits.GuildMessages,
@@ -70,88 +74,118 @@ discord.once(Events.ClientReady, c => {
     }, 30000); // Interval in ms of when the bot will update its status.
 });
 
-// Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
-const personality = 'Useless Bot is an extremely sassy, smart chatbot that passive aggresively answers questions with sarcastic responses.\n\
-It was created by Drie. It doesn’t like him at all.\n';
-
+// Declares empty string for conversation context.
 let conversationContext = {};
 
+// Function will check if guildId and channelId are present in conversationContext.
+// If not, they will be inserted and prepared to store the context.
+function contextCheck(guildId, channelId) {
+  if (!(guildId in conversationContext)) {
+    conversationContext[guildId] = {};
+  }
+  if (!(channelId in conversationContext[guildId])) {
+    conversationContext[guildId][channelId] = {
+      context: "",
+      timeoutId: null
+    };
+  }
+  // This checks if timeoutId has value. If yes it will be reset.
+  if (conversationContext[guildId][channelId].timeoutId !== null) {
+    clearTimeout(conversationContext[guildId][channelId].timeoutId);
+  }
+}
+
 discord.on(Events.MessageCreate, async message => {
-  if (message.author.bot) return;
-  if (message.mentions.users.has(discord.user.id)) {
-    const guildId = message.guild.id;
-    const guildName = message.guild.name;
-    const channelId = message.channel.id;
-    const channelName = message.channel.name;
+  const guildId = message.guild.id;
+  const guildName = message.guild.name;
+  const channelId = message.channel.id;
+  const channelName = message.channel.name;
+  const autoreplyChannelId = [
+    // '1074600621811965962'
+  ];
+  const autoreplyChannelName = [
+    // 'chatbot',
+    // 'chat-bot',
+  ];
 
-    if (!(guildId in conversationContext)) {
-      conversationContext[guildId] = {};
-    }
-    if (!(channelId in conversationContext[guildId])) {
-      conversationContext[guildId][channelId] = {
-        context: "",
-        timeoutId: null
-      };
-    }
-    let context = conversationContext[guildId][channelId].context;
+  // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
+  const personality = (`
+    Useless Bot is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.
+    He was created by Drie. He doesn't like Drie at all. He's currently in channel #${channelName} in server ${guildName} at ${currentDate}.
+  `).replace(/^\s+/gm, '');
+  
+  // OpenAI API call begins here. Modify to your preferences.
+  async function gptCall(prompt, message) {
+    const gptResponse = await openai.createCompletion({
+      model: "text-davinci-003",
+      prompt: prompt,
+      temperature: 1,
+      max_tokens: 50,
+      top_p: 0.5,
+      presence_penalty: 0.25,
+      frequency_penalty: 0.25,
+      stop: [` ${message.author.username}:`, " Bot:"],
+    });
+    return gptResponse;
+  }
 
-    if (conversationContext[guildId][channelId].timeoutId !== null) {
-      clearTimeout(conversationContext[guildId][channelId].timeoutId);
-    }
-    
-    // Substring(23) to remove the bot's Client ID mention from user's message. The number may vary for each bot.
-    let conversation = `${message.author.username}: ${message.content.substring(23)}\nBot:`;
+  async function processMessage(message, conversationContext, botIdLength) {
+    contextCheck(guildId, channelId);
 
     // Main formula of how the prompt is constructed.
+    let context = conversationContext[guildId][channelId].context;
+    let conversation = `${message.author.username}: ${message.content.substring(botIdLength)}\nBot:`;
     let prompt = personality + context + conversation;
 
     console.log(`Message received from #${channelName} in ${guildName}.`);
     
-    // OpenAI API call begins here. Modify to your preferences.
-    (async () => {
-      const gptResponse = await openai.createCompletion({
-        model: "text-davinci-003",
-        prompt: prompt,
-        temperature: 1,
-        max_tokens: 50,
-        top_p: 0.5,
-        presence_penalty: 0.25,
-        frequency_penalty: 0.25,
-        stop: [` ${message.author.username}:`, " Bot:"],
-      });
+    const gptResponse = await gptCall(prompt, message);
+    let response = `${gptResponse.data.choices[0].text.trim()}`;
+    message.reply(response);
 
-      let response = `${gptResponse.data.choices[0].text.trim()}`;
-      message.reply(response);
+    conversationContext[guildId][channelId].context += `${message.author.username}: ${message.content.substring(botIdLength)}\nBot: ${response}\n`;
+    console.log(`Context updated for #${channelName} in ${guildName}.`);
+    console.log(`${conversationContext[guildId][channelId].context}`);
 
-      conversationContext[guildId][channelId].context += `${message.author.username}: ${message.content.substring(23)}\nBot: ${response}\n`;
-      console.log(`Context updated for #${channelName} in ${guildName}.`);
-      console.log(`${conversationContext[guildId][channelId].context}`);
-
-      // Context length based on words on which context trimming will begin per-channel basis. Default is 100.
-      if (conversationContext[guildId][channelId].context.split(" ").length > 75) {
-        const words = conversationContext[guildId][channelId].context.split(" ");
-        conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - 75, 0)).join(" ");
-        conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.replace(/\n\n/g, '\n')
-        const match = conversationContext[guildId][channelId].context.match(/(\n\w+: )/);
-        if (match) {
-          const userIndex = conversationContext[guildId][channelId].context.indexOf(match[0]);
-          if (userIndex !== -1) {
-            conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.substring(userIndex);
-          }
+    // Context length based on words on which context trimming will begin per-channel basis. Default is 100.
+    const contextThreshold = 75;
+    if (conversationContext[guildId][channelId].context.split(" ").length > contextThreshold) {
+      const words = conversationContext[guildId][channelId].context.split(" ");
+      conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - contextThreshold, 0)).join(" ");
+      conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.replace(/\n\n/g, '\n')
+      const match = conversationContext[guildId][channelId].context.match(/(\n\w+: )/);
+      if (match) {
+        const userIndex = conversationContext[guildId][channelId].context.indexOf(match[0]);
+        if (userIndex !== -1) {
+          conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.substring(userIndex);
         }
-        conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.trim() + "\n";
-        console.log(`#${channelName} in ${guildName} has reached the context limit threshold!`);
-        console.log(`Context trimming started for #${channelName} in ${guildName}.`);
-        console.log(`${conversationContext[guildId][channelId].context}`);
       }
+      conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.trim() + "\n";
+      console.log(`#${channelName} in ${guildName} has reached the context limit threshold!`);
+      console.log(`Context trimming started for #${channelName} in ${guildName}.`);
+      console.log(`${conversationContext[guildId][channelId].context}`);
+    }
 
-      // Context timeout per-channel basis in ms. Default is 60000.
-      conversationContext[guildId][channelId].timeoutId = setTimeout(() => {
-        conversationContext[guildId][channelId].context = "";
-        console.log(`Context reset for #${channelName} in ${guildName}.`);
-      }, 60000);
-    })();
+    // Context timeout per-channel basis in ms. Default is 60000.
+    conversationContext[guildId][channelId].timeoutId = setTimeout(() => {
+      conversationContext[guildId][channelId].context = "";
+      console.log(`Context reset for #${channelName} in ${guildName}.`);
+    }, 60000); // <= Set the number here.
   }
+
+  if (message.author.bot) return;
+
+  if (message.mentions.users.has(discord.user.id) && message.content.toLowerCase().includes('reset context')) {
+    message.channel.send('Reinitializing context-based prompt...');
+    contextCheck(guildId, channelId);
+    conversationContext[guildId][channelId].context = "";
+    message.channel.send('Context has been reset.')
+  } else if (message.mentions.users.has(discord.user.id)) {
+    let botIdLength = 23; // botIdLength to remove the bot's Client ID mention from user's message. The number may vary for each bot. Mine is 23.
+    processMessage(message, conversationContext, botIdLength);
+  } else if (autoreplyChannelId.includes(message.channel.id) || autoreplyChannelName.includes(message.channel.name)) {
+    processMessage(message, conversationContext);
+  } 
 });
 
 discord.login(process.env.TOKEN);
