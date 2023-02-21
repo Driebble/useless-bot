@@ -52,32 +52,61 @@ discord.on(Events.InteractionCreate, async interaction => {
 	}
 });
 
+// OpenAI text-completion model API call to define current mood.
+let botMood = "";
+async function generateMood() {
+  const gptMood = await openai.createCompletion({
+    model: "text-curie-001",
+    prompt: `Say a random one word mood`,
+    temperature: 0.75,
+    max_tokens: 25,
+    top_p: 1,
+    presence_penalty: 0,
+    frequency_penalty: 0.5,
+  });
+  botMood = gptMood.data.choices[0].text.trim().toLowerCase();
+  console.log(`Current mood: ${botMood}`);
+}
+
+// Set an interval to call the generateMood function in between 0 to 15 minutes.
+setInterval(async function() {
+  generateMood();
+  setTimeout(() => {
+    discord.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
+  }, 3000);
+}, Math.floor(Math.random() * 600000));
+
 // Bot statuses. Modify to your preferences.
 const statuses = [
-  { status: `Distractible`, type: ActivityType.Listening },
-  { status: `The WAN Show`, type: ActivityType.Listening },
-  { status: `The Last of Us`, type: ActivityType.Watching },
-  { status: `Linus Tech Tips`, type: ActivityType.Watching },
-  { status: `Game Changer`, type: ActivityType.Watching },
-  { status: `demenishki`, type: ActivityType.Watching },
-  { status: `Destiny 2`, type: ActivityType.Playing },
-  { status: `Escape from Tarkov`, type: ActivityType.Playing },
-  { status: `Squid Game`, type: ActivityType.Competing },
+  // { status: `${botMood} music`, type: ActivityType.Listening },
+  // { status: `Distractible`, type: ActivityType.Listening },
+  // { status: `The WAN Show`, type: ActivityType.Listening },
+  // { status: `The Last of Us`, type: ActivityType.Watching },
+  // { status: `Linus Tech Tips`, type: ActivityType.Watching },
+  // { status: `Game Changer`, type: ActivityType.Watching },
+  // { status: `BLUELOCK`, type: ActivityType.Watching },
+  // { status: `Destiny 2`, type: ActivityType.Playing },
+  // { status: `Rocket League`, type: ActivityType.Playing },
+  // { status: `Squid Game`, type: ActivityType.Competing },
 ];
 
-discord.once(Events.ClientReady, c => {
-	console.log(`Ready! Logged in as ${c.user.tag}`);
-    setInterval(() => {
-		var randomIndex = Math.floor(Math.random() * statuses.length);
-		const { status, type } = statuses[randomIndex];
-      discord.user.setActivity(status, { type });
-    }, 30000); // Interval in ms of when the bot will update its status.
+discord.once(Events.ClientReady, () => {
+	console.log(`Ready! Logged in as ${discord.user.tag}`);
+  generateMood();
+  setTimeout(() => {
+    discord.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
+  }, 3000);
+  // setInterval(() => {
+  //   let randomIndex = Math.floor(Math.random() * statuses.length);
+  //   const { status, type } = statuses[randomIndex]; 
+  //   discord.user.setActivity(status, { type });
+  // }, Math.floor(Math.random() * 30000)); // Interval between 0 and said ms of when the bot will update its status.
 });
 
-// Declares empty string for conversation context.
+// Declares empty string for conversation context globally.
 let conversationContext = {};
 
-// Function will check if guildId and channelId are present in conversationContext.
+// This function will check if guildId and channelId are present in conversationContext.
 // If not, they will be inserted and prepared to store the context.
 function contextCheck(guildId, channelId) {
   if (!(guildId in conversationContext)) {
@@ -89,7 +118,7 @@ function contextCheck(guildId, channelId) {
       timeoutId: null
     };
   }
-  // This checks if timeoutId has value. If yes it will be reset.
+  // This checks if timeoutId has value (if the countdown is running). If yes it will be reset.
   if (conversationContext[guildId][channelId].timeoutId !== null) {
     clearTimeout(conversationContext[guildId][channelId].timeoutId);
   }
@@ -100,6 +129,10 @@ discord.on(Events.MessageCreate, async message => {
   const guildName = message.guild.name;
   const channelId = message.channel.id;
   const channelName = message.channel.name;
+  const userName = message.author.username;
+  const userMessage = message.content;
+  const botMember = message.guild.members.cache.get(discord.user.id);
+  const botNickname = botMember ? botMember.nickname : "Useless Bot"; // <- Put your default bot's name here.
   const autoreplyChannelId = [
     // '1074600621811965962'
   ];
@@ -108,14 +141,19 @@ discord.on(Events.MessageCreate, async message => {
     // 'chat-bot',
   ];
 
+  // botIdLength to remove the bot's Client ID mention from user's message.
+  // The number may vary for each bot. Mine is 23.
+  let botIdLength = 23;
+
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
-    Useless Bot is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.
-    He was created by Drie. He doesn't like Drie at all. He's currently in channel #${channelName} in server ${guildName} at ${currentDate}.
+    ${botNickname} is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.
+    It was created by Drie. It doesn't like Drie at all. It's currently feeling ${botMood}.
+    It's currently in channel #${channelName} in server ${guildName} at ${currentDate}.
   `).replace(/^\s+/gm, '');
   
-  // OpenAI API call begins here. Modify to your preferences.
-  async function gptCall(prompt, message) {
+  // OpenAI text-completion model API call begins here. Modify to your preferences.
+  async function generateResponse(prompt, userName, botNickname) {
     const gptResponse = await openai.createCompletion({
       model: "text-davinci-003",
       prompt: prompt,
@@ -124,30 +162,43 @@ discord.on(Events.MessageCreate, async message => {
       top_p: 0.5,
       presence_penalty: 0.25,
       frequency_penalty: 0.25,
-      stop: [` ${message.author.username}:`, " Bot:"],
+      stop: [` ${userName}:`, ` ${botNickname}:`],
     });
     return gptResponse;
   }
 
+  // OpenAI text-to-image model API call begins here. Modify to your preferences.
+  async function generateImage(prompt) {
+    const gptCreate = await openai.createImage({
+      prompt: prompt,
+      n: 1,
+      size: "512x512",
+    });
+    let gptImage = gptCreate.data.data[0].url;
+    return gptImage;
+  }
+
   async function processMessage(message, conversationContext, botIdLength) {
+    // Immediately do a contextCheck when a processMessage is called.
     contextCheck(guildId, channelId);
 
     // Main formula of how the prompt is constructed.
     let context = conversationContext[guildId][channelId].context;
-    let conversation = `${message.author.username}: ${message.content.substring(botIdLength)}\nBot:`;
+    let conversation = `${userName}: ${userMessage.substring(botIdLength)}\n${botNickname}:`;
     let prompt = personality + context + conversation;
 
-    console.log(`Message received from #${channelName} in ${guildName}.`);
+    console.log(`Message received for "${botNickname}" from #${channelName} in ${guildName}.`);
     
-    const gptResponse = await gptCall(prompt, message);
-    let response = `${gptResponse.data.choices[0].text.trim()}`;
-    message.reply(response);
+    // Building bot's reply.
+    const gptResponse = await generateResponse(prompt, message);
+    let botResponse = `${gptResponse.data.choices[0].text.trim()}`;
+    message.reply(botResponse);
 
-    conversationContext[guildId][channelId].context += `${message.author.username}: ${message.content.substring(botIdLength)}\nBot: ${response}\n`;
-    console.log(`Context updated for #${channelName} in ${guildName}.`);
+    conversationContext[guildId][channelId].context += `${userName}: ${userMessage.substring(botIdLength)}\n${botNickname}: ${botResponse}\n`;
+    // console.log(`Context updated for #${channelName} in ${guildName}.`);
     console.log(`${conversationContext[guildId][channelId].context}`);
 
-    // Context length based on words on which context trimming will begin per-channel basis. Default is 100.
+    // Context length based on words on which context trimming will begin per-channel basis. Default is 75.
     const contextThreshold = 75;
     if (conversationContext[guildId][channelId].context.split(" ").length > contextThreshold) {
       const words = conversationContext[guildId][channelId].context.split(" ");
@@ -161,7 +212,7 @@ discord.on(Events.MessageCreate, async message => {
         }
       }
       conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.trim() + "\n";
-      console.log(`#${channelName} in ${guildName} has reached the context limit threshold!`);
+      // console.log(`#${channelName} in ${guildName} has reached the context limit threshold!`);
       console.log(`Context trimming started for #${channelName} in ${guildName}.`);
       console.log(`${conversationContext[guildId][channelId].context}`);
     }
@@ -175,16 +226,21 @@ discord.on(Events.MessageCreate, async message => {
 
   if (message.author.bot) return;
 
-  if (message.mentions.users.has(discord.user.id) && message.content.toLowerCase().includes('reset context')) {
+  if (message.mentions.users.has(discord.user.id) && userMessage.toLowerCase().includes('reset context')) {
     message.channel.send('Reinitializing context-based prompt...');
     contextCheck(guildId, channelId);
     conversationContext[guildId][channelId].context = "";
-    message.channel.send('Context has been reset.')
+    message.channel.send('Context has been force reset.')
+  } else if (message.mentions.users.has(discord.user.id) && userMessage.toLowerCase().includes('imagine')) {
+      let prompt = `${userMessage.substring(botIdLength + 8)}`;
+      console.log(`Imagine prompt by ${userName} from ${guildName}: \n"${prompt}"`);
+      const gptImage = await generateImage(prompt);
+      message.reply(gptImage);
   } else if (message.mentions.users.has(discord.user.id)) {
-    let botIdLength = 23; // botIdLength to remove the bot's Client ID mention from user's message. The number may vary for each bot. Mine is 23.
-    processMessage(message, conversationContext, botIdLength);
+      processMessage(message, conversationContext, botIdLength);
   } else if (autoreplyChannelId.includes(message.channel.id) || autoreplyChannelName.includes(message.channel.name)) {
-    processMessage(message, conversationContext);
+      let botIdLength = 0; // To disable bot ID substring in the prompt.
+      processMessage(message, conversationContext, botIdLength);
   } 
 });
 
