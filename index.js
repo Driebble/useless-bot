@@ -125,31 +125,30 @@ function contextCheck(guildId, channelId) {
 }
 
 discord.on(Events.MessageCreate, async message => {
+  const idPattern = /<@\d+>/g;
   const guildId = message.guild.id;
   const guildName = message.guild.name;
   const channelId = message.channel.id;
   const channelName = message.channel.name;
   const userName = message.author.username;
   const userMessage = message.content;
-  const botMember = message.guild.members.cache.get(discord.user.id);
-  const botNickname = botMember ? botMember.nickname : "Useless Bot"; // <- Put your default bot's name here.
-  const autoreplyChannelId = [
-    // '1074600621811965962'
-  ];
-  const autoreplyChannelName = [
-    // 'chatbot',
-    // 'chat-bot',
-  ];
 
-  // botIdLength to remove the bot's Client ID mention from user's message.
-  // The number may vary for each bot. Mine is 23.
-  let botIdLength = 23;
+  const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
+  const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(discord.user.id);
+
+  const channel = message.channel;
+  const messages = await channel.messages.fetch({ limit: 6 }); // <- Pulls out the last 6 messages for context matching.
+  const messageArray = Array.from(messages.values()).reverse();
+  const chatHistory = messageArray.map(msg => {
+    const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username;
+    return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
+  }).join('\n');
 
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
-    ${botNickname} is a very sassy, but very smart Discord bot that passive aggresively answers questions with sarcastic responses.
-    It was created by Drie. It doesn't like Drie at all. It's currently feeling ${botMood}.
-    It's currently in channel #${channelName} in server ${guildName} at ${currentDate}.
+    ${botNickname} is a very sassy Discord bot that passive aggresively answers questions with sarcastic responses.
+    It was created by Drie. It doesn't like Drie at all. It's currently feeling "${botMood}".
+    Currently in #${channelName} in server ${guildName} at ${currentDate}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
@@ -178,70 +177,21 @@ discord.on(Events.MessageCreate, async message => {
     return gptImage;
   }
 
-  async function processMessage(message, conversationContext, botIdLength) {
-    // Immediately do a contextCheck when a processMessage is called.
-    contextCheck(guildId, channelId);
+  if (message.author.bot) return;
 
-    // Main formula of how the prompt is constructed.
-    let context = conversationContext[guildId][channelId].context;
-    let conversation = `${userName}: ${userMessage.substring(botIdLength)}\n${botNickname}:`;
-    let prompt = personality + context + conversation;
-
-    console.log(`Message received for "${botNickname}" from #${channelName} in ${guildName}.`);
-    
-    // Building bot's reply.
+  if (botCalled && userMessage.toLowerCase().includes('imagine')) {
+    let prompt = `${userMessage.toLowerCase().replace(idPattern, "").replace(botNickname.toLowerCase(), '').replace('imagine', '').trim()}`;
+    console.log(`Imagine prompt by ${userName} from ${guildName}: \n"${prompt}"`);
+    const gptImage = await generateImage(prompt);
+    message.reply(gptImage);
+  } else if (botCalled) {
+    let prompt = `${personality}${chatHistory}\n${botNickname}:`;
+    console.log(`${personality}${chatHistory}`);
     const gptResponse = await generateResponse(prompt, message);
     let botResponse = `${gptResponse.data.choices[0].text.trim()}`;
     message.reply(botResponse);
-
-    conversationContext[guildId][channelId].context += `${userName}: ${userMessage.substring(botIdLength)}\n${botNickname}: ${botResponse}\n`;
-    // console.log(`Context updated for #${channelName} in ${guildName}.`);
-    console.log(`${conversationContext[guildId][channelId].context}`);
-
-    // Context length based on words on which context trimming will begin per-channel basis. Default is 75.
-    const contextThreshold = 75;
-    if (conversationContext[guildId][channelId].context.split(" ").length > contextThreshold) {
-      const words = conversationContext[guildId][channelId].context.split(" ");
-      conversationContext[guildId][channelId].context = words.slice(Math.max(words.length - contextThreshold, 0)).join(" ");
-      conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.replace(/\n\n/g, '\n')
-      const match = conversationContext[guildId][channelId].context.match(/(\n\w+: )/);
-      if (match) {
-        const userIndex = conversationContext[guildId][channelId].context.indexOf(match[0]);
-        if (userIndex !== -1) {
-          conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.substring(userIndex);
-        }
-      }
-      conversationContext[guildId][channelId].context = conversationContext[guildId][channelId].context.trim() + "\n";
-      // console.log(`#${channelName} in ${guildName} has reached the context limit threshold!`);
-      console.log(`Context trimming started for #${channelName} in ${guildName}.`);
-      console.log(`${conversationContext[guildId][channelId].context}`);
-    }
-
-    // Context timeout per-channel basis in ms. Default is 60000.
-    conversationContext[guildId][channelId].timeoutId = setTimeout(() => {
-      conversationContext[guildId][channelId].context = "";
-      console.log(`Context reset for #${channelName} in ${guildName}.`);
-    }, 60000); // <= Set the number here.
+    console.log(`${botNickname}: ${botResponse}`);
   }
-
-  if (message.author.bot) return;
-
-  if (message.mentions.users.has(discord.user.id) && userMessage.toLowerCase().includes('reset context')) {
-    message.channel.send('Reinitializing context-based prompt...');
-    contextCheck(guildId, channelId);
-    conversationContext[guildId][channelId].context = "";
-    message.channel.send('Context has been force reset.')
-  } else if (message.mentions.users.has(discord.user.id) && userMessage.toLowerCase().includes('imagine')) {
-      let prompt = `${userMessage.substring(botIdLength + 8)}`;
-      console.log(`Imagine prompt by ${userName} from ${guildName}: \n"${prompt}"`);
-      const gptImage = await generateImage(prompt);
-      message.reply(gptImage);
-  } else if (message.mentions.users.has(discord.user.id)) {
-      processMessage(message, conversationContext, botIdLength);
-  } else if (autoreplyChannelId.includes(message.channel.id) || autoreplyChannelName.includes(message.channel.name)) {
-      let botIdLength = 0; // To disable bot ID substring in the prompt.
-      processMessage(message, conversationContext, botIdLength);
-  } 
 });
 
 discord.login(process.env.TOKEN);
