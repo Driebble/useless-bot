@@ -65,7 +65,7 @@ async function generateMood() {
     frequency_penalty: 0.5,
   });
   botMood = gptMood.data.choices[0].text.trim().toLowerCase();
-  console.log(`Current mood: ${botMood}`);
+  console.log(`Current mood: \x1b[35m${botMood}\x1b[0m`);
 }
 
 // Set an interval to call the generateMood function in between 0 to 15 minutes.
@@ -103,28 +103,13 @@ discord.once(Events.ClientReady, () => {
   // }, Math.floor(Math.random() * 30000)); // Interval between 0 and said ms of when the bot will update its status.
 });
 
-// Declares empty string for conversation context globally.
-let conversationContext = {};
-
-// This function will check if guildId and channelId are present in conversationContext.
-// If not, they will be inserted and prepared to store the context.
-function contextCheck(guildId, channelId) {
-  if (!(guildId in conversationContext)) {
-    conversationContext[guildId] = {};
-  }
-  if (!(channelId in conversationContext[guildId])) {
-    conversationContext[guildId][channelId] = {
-      context: "",
-      timeoutId: null
-    };
-  }
-  // This checks if timeoutId has value (if the countdown is running). If yes it will be reset.
-  if (conversationContext[guildId][channelId].timeoutId !== null) {
-    clearTimeout(conversationContext[guildId][channelId].timeoutId);
-  }
-}
+const lastResponseTime = {};
+let chatWait;
+let timeoutId;
 
 discord.on(Events.MessageCreate, async message => {
+  if (message.author.bot) return;
+
   const idPattern = /<@\d+>/g;
   const guildId = message.guild.id;
   const guildName = message.guild.name;
@@ -132,8 +117,8 @@ discord.on(Events.MessageCreate, async message => {
   const channelName = message.channel.name;
   const userName = message.author.username;
   const userMessage = message.content;
-
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
+
   const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(discord.user.id);
 
   const channel = message.channel;
@@ -148,7 +133,7 @@ discord.on(Events.MessageCreate, async message => {
   const personality = (`
     ${botNickname} is a very sassy Discord bot that passive aggresively answers questions with sarcastic responses.
     It was created by Drie. It doesn't like Drie at all. It's currently feeling "${botMood}".
-    Currently in #${channelName} in server ${guildName} at ${currentDate}.
+    Currently in #${channelName} in server ${guildName} at ${dateString}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
@@ -177,20 +162,55 @@ discord.on(Events.MessageCreate, async message => {
     return gptImage;
   }
 
-  if (message.author.bot) return;
-
-  if (botCalled && userMessage.toLowerCase().includes('imagine')) {
-    let prompt = `${userMessage.toLowerCase().replace(idPattern, "").replace(botNickname.toLowerCase(), '').replace('imagine', '').trim()}`;
-    console.log(`Imagine prompt by ${userName} from ${guildName}: \n"${prompt}"`);
-    const gptImage = await generateImage(prompt);
-    message.reply(gptImage);
-  } else if (botCalled) {
+  async function sendResponse(message) {
     let prompt = `${personality}${chatHistory}\n${botNickname}:`;
     console.log(`${personality}${chatHistory}`);
     const gptResponse = await generateResponse(prompt, message);
     let botResponse = `${gptResponse.data.choices[0].text.trim()}`;
-    message.reply(botResponse);
+    message.channel.send(botResponse);
     console.log(`${botNickname}: ${botResponse}`);
+  }
+
+  async function sendGeneratedImage(message) {
+    let prompt = `${userMessage.toLowerCase().replace(idPattern, "").replace(botNickname.toLowerCase(), '').replace('imagine', '').trim()}`;
+    console.log(`\x1b[32mImagine prompt by ${userName} from ${guildName}: \n"${prompt}"\x1b[0m`);
+    const gptImage = await generateImage(prompt);
+    message.channel.send(gptImage);
+  }
+
+  function stopAttention(channelId) {
+    lastResponseTime[channelId] = null;
+    console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`);
+  }
+
+  if (botCalled && (!lastResponseTime[channelId]) && userMessage.toLowerCase().includes('imagine')) {
+    clearTimeout(timeoutId);
+    sendGeneratedImage(message);
+    lastResponseTime[channelId] = Date.now();
+    console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
+    timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+  } else if (botCalled && (!lastResponseTime[channelId])) {
+    clearTimeout(timeoutId);
+    sendResponse(message);
+    lastResponseTime[channelId] = Date.now();
+    console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
+    timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+  } else if (lastResponseTime[channelId] !== null) {
+    clearTimeout(chatWait);
+    chatWait = setTimeout(() => {
+      clearTimeout(timeoutId);
+      sendResponse(message);
+      lastResponseTime[channelId] = Date.now();
+      timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+    }, 5000);
+  } else if (lastResponseTime[channelId] !== null && userMessage.toLowerCase().includes('imagine')) {
+    clearTimeout(chatWait);
+    chatWait = setTimeout(() => {
+      clearTimeout(timeoutId);
+      sendGeneratedImage(message);
+      lastResponseTime[channelId] = Date.now();
+      timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+    }, 5000);
   }
 });
 
