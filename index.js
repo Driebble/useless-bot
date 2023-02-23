@@ -58,10 +58,10 @@ async function generateMood() {
   const gptMood = await openai.createCompletion({
     model: "text-curie-001",
     prompt: `Say a random one word mood`,
-    temperature: 0.75,
+    temperature: 0.65,
     max_tokens: 25,
     top_p: 1,
-    presence_penalty: 0,
+    presence_penalty: 0.5,
     frequency_penalty: 0.5,
   });
   botMood = gptMood.data.choices[0].text.trim().toLowerCase();
@@ -76,31 +76,12 @@ setInterval(async function() {
   }, 3000);
 }, Math.floor(Math.random() * 600000));
 
-// Bot statuses. Modify to your preferences.
-const statuses = [
-  // { status: `${botMood} music`, type: ActivityType.Listening },
-  // { status: `Distractible`, type: ActivityType.Listening },
-  // { status: `The WAN Show`, type: ActivityType.Listening },
-  // { status: `The Last of Us`, type: ActivityType.Watching },
-  // { status: `Linus Tech Tips`, type: ActivityType.Watching },
-  // { status: `Game Changer`, type: ActivityType.Watching },
-  // { status: `BLUELOCK`, type: ActivityType.Watching },
-  // { status: `Destiny 2`, type: ActivityType.Playing },
-  // { status: `Rocket League`, type: ActivityType.Playing },
-  // { status: `Squid Game`, type: ActivityType.Competing },
-];
-
 discord.once(Events.ClientReady, () => {
 	console.log(`Ready! Logged in as ${discord.user.tag}`);
   generateMood();
   setTimeout(() => {
     discord.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
   }, 3000);
-  // setInterval(() => {
-  //   let randomIndex = Math.floor(Math.random() * statuses.length);
-  //   const { status, type } = statuses[randomIndex]; 
-  //   discord.user.setActivity(status, { type });
-  // }, Math.floor(Math.random() * 30000)); // Interval between 0 and said ms of when the bot will update its status.
 });
 
 const lastResponseTime = {};
@@ -132,7 +113,7 @@ discord.on(Events.MessageCreate, async message => {
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
     ${botNickname} is a very sassy Discord bot that passive aggresively answers questions with sarcastic responses.
-    It was created by Drie. It doesn't like Drie at all. It's currently feeling "${botMood}".
+    It was created by Drie. It doesn't like Drie at all.
     Currently in #${channelName} in server ${guildName} at ${dateString}.
   `).replace(/^\s+/gm, '');
   
@@ -163,12 +144,12 @@ discord.on(Events.MessageCreate, async message => {
   }
 
   async function sendResponse(message) {
-    let prompt = `${personality}${chatHistory}\n${botNickname}:`;
-    console.log(`${personality}${chatHistory}`);
+    let prompt = `${personality}${chatHistory}\n${botNickname} is currently feeling "${botMood}".\n${botNickname}:`;
+    // console.log(`${personality}${chatHistory}`);
     const gptResponse = await generateResponse(prompt, message);
     let botResponse = `${gptResponse.data.choices[0].text.trim()}`;
     message.channel.send(botResponse);
-    console.log(`${botNickname}: ${botResponse}`);
+    // console.log(`${botNickname}: ${botResponse}`);
   }
 
   async function sendGeneratedImage(message) {
@@ -178,38 +159,40 @@ discord.on(Events.MessageCreate, async message => {
     message.channel.send(gptImage);
   }
 
+  function processMessage(sendResponse, message, channelId, stopAttention) {
+    clearTimeout(timeoutId);
+    sendResponse(message);
+    lastResponseTime[channelId] = Date.now();
+    timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+  }
+
+  function processGenerateRequest(sendGeneratedImage, message, channelId, stopAttention) {
+    clearTimeout(timeoutId);
+    sendGeneratedImage(message);
+    lastResponseTime[channelId] = Date.now();
+    timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+  }
+  
   function stopAttention(channelId) {
     lastResponseTime[channelId] = null;
     console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`);
   }
 
   if (botCalled && (!lastResponseTime[channelId]) && userMessage.toLowerCase().includes('imagine')) {
-    clearTimeout(timeoutId);
-    sendGeneratedImage(message);
-    lastResponseTime[channelId] = Date.now();
     console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
-    timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+    processGenerateRequest(sendGeneratedImage, message, channelId, stopAttention);
   } else if (botCalled && (!lastResponseTime[channelId])) {
-    clearTimeout(timeoutId);
-    sendResponse(message);
-    lastResponseTime[channelId] = Date.now();
     console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
-    timeoutId = setTimeout(() => stopAttention(channelId), 60000);
-  } else if (lastResponseTime[channelId] !== null) {
+    processMessage(sendResponse, message, channelId, stopAttention);
+  } else if (Date.now() - lastResponseTime[channelId] <= 60000 && userMessage.toLowerCase().includes('imagine')) {
     clearTimeout(chatWait);
     chatWait = setTimeout(() => {
-      clearTimeout(timeoutId);
-      sendResponse(message);
-      lastResponseTime[channelId] = Date.now();
-      timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+      processGenerateRequest(sendGeneratedImage, message, channelId, stopAttention);
     }, 5000);
-  } else if (lastResponseTime[channelId] !== null && userMessage.toLowerCase().includes('imagine')) {
+  } else if (Date.now() - lastResponseTime[channelId] <= 60000) {
     clearTimeout(chatWait);
     chatWait = setTimeout(() => {
-      clearTimeout(timeoutId);
-      sendGeneratedImage(message);
-      lastResponseTime[channelId] = Date.now();
-      timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+      processMessage(sendResponse, message, channelId, stopAttention);
     }, 5000);
   }
 });
