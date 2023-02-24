@@ -9,7 +9,7 @@ const currentDate = new Date();
 const dateString = currentDate.toLocaleString();
 console.log(dateString);
 
-const discord = new Client({ intents: [
+const client = new Client({ intents: [
 	GatewayIntentBits.Guilds,
 	GatewayIntentBits.GuildMessages,
   GatewayIntentBits.MessageContent,
@@ -18,7 +18,7 @@ const discord = new Client({ intents: [
 const configuration = new Configuration({ apiKey: process.env.OPENAIKEY });
 const openai = new OpenAIApi(configuration);
 
-discord.commands = new Collection();
+client.commands = new Collection();
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -28,16 +28,16 @@ for (const file of commandFiles) {
   const command = require(filePath);
 	//  Set a new item in the Collection with the key as the command name and the value as the exported module
   if ('data' in command && 'execute' in command) {
-    discord.commands.set(command.data.name, command);
+    client.commands.set(command.data.name, command);
 	} else {
 		console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
 	}
 }
 
-discord.on(Events.InteractionCreate, async interaction => {
+client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
 
-	const command = interaction.discord.commands.get(interaction.commandName);
+	const command = interaction.client.commands.get(interaction.commandName);
 
 	if (!command) {
 		console.error(`No command matching ${interaction.commandName} was found.`);
@@ -72,7 +72,7 @@ async function generateMood() {
 setInterval(async function() {
   generateMood();
   setTimeout(() => {
-    discord.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
+    client.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
   }, 3000);
 }, Math.floor(Math.random() * 600000));
 
@@ -90,16 +90,16 @@ const statuses = [
   // { status: `Squid Game`, type: ActivityType.Competing },
 ];
 
-discord.once(Events.ClientReady, () => {
-	console.log(`Ready! Logged in as ${discord.user.tag}`);
+client.once(Events.ClientReady, () => {
+	console.log(`Ready! Logged in as ${client.user.tag}`);
   generateMood();
   setTimeout(() => {
-    discord.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
+    client.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
   }, 3000);
   // setInterval(() => {
   //   let randomIndex = Math.floor(Math.random() * statuses.length);
   //   const { status, type } = statuses[randomIndex]; 
-  //   discord.user.setActivity(status, { type });
+  //   client.user.setActivity(status, { type });
   // }, Math.floor(Math.random() * 30000)); // Interval between 0 and said ms of when the bot will update its status.
 });
 
@@ -107,7 +107,7 @@ const lastResponseTime = {};
 let chatWait;
 let timeoutId;
 
-discord.on(Events.MessageCreate, async message => {
+client.on(Events.MessageCreate, async message => {
   if (message.author.bot) return;
 
   const idPattern = /<@\d+>/g;
@@ -119,7 +119,7 @@ discord.on(Events.MessageCreate, async message => {
   const userMessage = message.content;
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
 
-  const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(discord.user.id);
+  const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
 
   const channel = message.channel;
   const messages = await channel.messages.fetch({ limit: 6 }); // <- Pulls out the last 6 messages for context matching.
@@ -214,4 +214,4 @@ discord.on(Events.MessageCreate, async message => {
   }
 });
 
-discord.login(process.env.TOKEN);
+client.login(process.env.TOKEN);
