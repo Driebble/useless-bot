@@ -52,12 +52,13 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 });
 
+let botMood;
+
 // OpenAI text-completion model API call to define current mood.
-let botMood = "";
 async function generateMood() {
   const gptMood = await openai.createCompletion({
     model: "text-curie-001",
-    prompt: `Say a random one word mood`,
+    prompt: `Random mood one word`,
     temperature: 0.75,
     max_tokens: 25,
     top_p: 1,
@@ -66,29 +67,16 @@ async function generateMood() {
   });
   botMood = gptMood.data.choices[0].text.trim().toLowerCase();
   console.log(`Current mood: \x1b[35m${botMood}\x1b[0m`);
+  moodTimer = Math.floor(Math.random() * 900000);
 }
 
 // Set an interval to call the generateMood function in between 0 to 15 minutes.
-setInterval(async function() {
+moodInterval = setInterval(async function() {
   generateMood();
   setTimeout(() => {
     client.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
   }, 3000);
-}, Math.floor(Math.random() * 600000));
-
-// Bot statuses. Modify to your preferences.
-const statuses = [
-  // { status: `${botMood} music`, type: ActivityType.Listening },
-  // { status: `Distractible`, type: ActivityType.Listening },
-  // { status: `The WAN Show`, type: ActivityType.Listening },
-  // { status: `The Last of Us`, type: ActivityType.Watching },
-  // { status: `Linus Tech Tips`, type: ActivityType.Watching },
-  // { status: `Game Changer`, type: ActivityType.Watching },
-  // { status: `BLUELOCK`, type: ActivityType.Watching },
-  // { status: `Destiny 2`, type: ActivityType.Playing },
-  // { status: `Rocket League`, type: ActivityType.Playing },
-  // { status: `Squid Game`, type: ActivityType.Competing },
-];
+}, Math.floor(Math.random() * 900000));
 
 client.once(Events.ClientReady, () => {
 	console.log(`Ready! Logged in as ${client.user.tag}`);
@@ -96,11 +84,6 @@ client.once(Events.ClientReady, () => {
   setTimeout(() => {
     client.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
   }, 3000);
-  // setInterval(() => {
-  //   let randomIndex = Math.floor(Math.random() * statuses.length);
-  //   const { status, type } = statuses[randomIndex]; 
-  //   client.user.setActivity(status, { type });
-  // }, Math.floor(Math.random() * 30000)); // Interval between 0 and said ms of when the bot will update its status.
 });
 
 const lastResponseTime = {};
@@ -131,9 +114,8 @@ client.on(Events.MessageCreate, async message => {
 
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
-    ${botNickname} is a very sassy Discord bot that passive aggresively answers questions with sarcastic responses.
-    It was created by Drie. It doesn't like Drie at all. It's currently feeling "${botMood}".
-    Currently in #${channelName} in server ${guildName} at ${dateString}.
+    ${botNickname} is a very sassy Discord bot that answers questions based on how it's feeling.
+    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${dateString} feeling "${botMood}".
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
@@ -158,7 +140,7 @@ client.on(Events.MessageCreate, async message => {
       n: 1,
       size: "512x512",
     });
-    let gptImage = gptCreate.data.data[0].url;
+    const gptImage = gptCreate.data.data[0].url;
     return gptImage;
   }
 
@@ -183,34 +165,40 @@ client.on(Events.MessageCreate, async message => {
     console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`);
   }
 
+  // Set how long the bot will pay attention to the channel (in ms).
+  const attentionTime = 60000;
+
+  // Set how long the bot will wait for people to stop sending chat before replying (in ms).
+  const waitTime = 5000;
+
   if (botCalled && (!lastResponseTime[channelId]) && userMessage.toLowerCase().includes('imagine')) {
     clearTimeout(timeoutId);
     sendGeneratedImage(message);
     lastResponseTime[channelId] = Date.now();
     console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
-    timeoutId = setTimeout(() => stopAttention(channelId), 60000);
+    timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
   } else if (botCalled && (!lastResponseTime[channelId])) {
     clearTimeout(timeoutId);
     sendResponse(message);
     lastResponseTime[channelId] = Date.now();
     console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
-    timeoutId = setTimeout(() => stopAttention(channelId), 60000);
-  } else if (lastResponseTime[channelId] !== null) {
+    timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
+  } else if (Date.now() - lastResponseTime[channelId] <= attentionTime) {
     clearTimeout(chatWait);
     chatWait = setTimeout(() => {
       clearTimeout(timeoutId);
       sendResponse(message);
       lastResponseTime[channelId] = Date.now();
-      timeoutId = setTimeout(() => stopAttention(channelId), 60000);
-    }, 5000);
-  } else if (lastResponseTime[channelId] !== null && userMessage.toLowerCase().includes('imagine')) {
+      timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
+    }, waitTime);
+  } else if (Date.now() - lastResponseTime[channelId] <= attentionTime && userMessage.toLowerCase().includes('imagine')) {
     clearTimeout(chatWait);
     chatWait = setTimeout(() => {
       clearTimeout(timeoutId);
       sendGeneratedImage(message);
       lastResponseTime[channelId] = Date.now();
-      timeoutId = setTimeout(() => stopAttention(channelId), 60000);
-    }, 5000);
+      timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
+    }, waitTime);
   }
 });
 
