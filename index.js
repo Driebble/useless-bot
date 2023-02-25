@@ -7,6 +7,7 @@ const { Configuration, OpenAIApi } = require("openai");
 
 const currentDate = new Date();
 const dateString = currentDate.toLocaleString();
+const timestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
 console.log(dateString);
 
 const client = new Client({ intents: [
@@ -52,38 +53,8 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 });
 
-let botMood;
-
-// OpenAI text-completion model API call to define current mood.
-async function generateMood() {
-  const gptMood = await openai.createCompletion({
-    model: "text-curie-001",
-    prompt: `Random mood one word`,
-    temperature: 0.75,
-    max_tokens: 25,
-    top_p: 1,
-    presence_penalty: 0,
-    frequency_penalty: 0.5,
-  });
-  botMood = gptMood.data.choices[0].text.trim().toLowerCase();
-  console.log(`Current mood: \x1b[35m${botMood}\x1b[0m`);
-  moodTimer = Math.floor(Math.random() * 900000);
-}
-
-// Set an interval to call the generateMood function in between 0 to 15 minutes.
-moodInterval = setInterval(async function() {
-  generateMood();
-  setTimeout(() => {
-    client.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
-  }, 3000);
-}, Math.floor(Math.random() * 900000));
-
 client.once(Events.ClientReady, () => {
-	console.log(`Ready! Logged in as ${client.user.tag}`);
-  generateMood();
-  setTimeout(() => {
-    client.user.setActivity(`${botMood} music`, { type: ActivityType.Listening });
-  }, 3000);
+  console.log(`Ready! Logged in as ${client.user.tag}`);
 });
 
 const lastResponseTime = {};
@@ -109,13 +80,14 @@ client.on(Events.MessageCreate, async message => {
   const messageArray = Array.from(messages.values()).reverse();
   const chatHistory = messageArray.map(msg => {
     const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username;
-    return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
+    const historyTimestamp = new Date(msg.createdTimestamp).toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
+    return `${historyTimestamp} ${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
   }).join('\n');
 
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
-    ${botNickname} is a very sassy Discord bot that answers questions based on how it's feeling.
-    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${dateString} feeling "${botMood}".
+    ${botNickname} is a very sassy Discord bot that reluctantly answers questions.
+    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${dateString}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
@@ -128,7 +100,7 @@ client.on(Events.MessageCreate, async message => {
       top_p: 0.5,
       presence_penalty: 0.25,
       frequency_penalty: 0.25,
-      stop: [` ${userName}:`, ` ${botNickname}:`],
+      stop: [`${timestamp} ${userName}:`, `${timestamp} ${botNickname}:`],
     });
     return gptResponse;
   }
@@ -145,12 +117,12 @@ client.on(Events.MessageCreate, async message => {
   }
 
   async function sendResponse(message) {
-    let prompt = `${personality}${chatHistory}\n${botNickname}:`;
+    let prompt = `${personality}${chatHistory}\n${timestamp} ${botNickname}:`;
     console.log(`${personality}${chatHistory}`);
     const gptResponse = await generateResponse(prompt, message);
     let botResponse = `${gptResponse.data.choices[0].text.trim()}`;
     message.channel.send(botResponse);
-    console.log(`${botNickname}: ${botResponse}`);
+    console.log(`${timestamp} ${botNickname}: ${botResponse}`);
   }
 
   async function sendGeneratedImage(message) {
