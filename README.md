@@ -4,7 +4,7 @@ This is a basic Discord bot that uses OpenAI's GPT-3 API to generate text-based 
 
 ## Warning!
 
-OpenAI API is not a free service. Though you can start with a free credits on your first sign up.
+OpenAI API is not free. Though you can start with a free credits on your first sign up.
 
 ## Prerequisites
 
