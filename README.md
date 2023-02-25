@@ -2,6 +2,10 @@
 
 This is a basic Discord bot that uses OpenAI's GPT-3 API to generate text-based responses to user messages. It also includes integration with OpenAI's Dall-E image-generation API to generate images based on user prompts.
 
+## Warning!
+
+OpenAI API is not a free service. Though you can start with a free credits on your first sign up.
+
 ## Prerequisites
 
 Before running this bot, you will need to set up the following:
