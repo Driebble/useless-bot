@@ -55,6 +55,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
 client.once(Events.ClientReady, () => {
   console.log(`Ready! Logged in as ${client.user.tag}`);
+  client.user.setActivity(`you`, { type: ActivityType.Listening });
 });
 
 const lastResponseTime = {};
