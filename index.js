@@ -87,7 +87,7 @@ client.on(Events.MessageCreate, async message => {
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
     ${botNickname} is a very sassy Discord bot that reluctantly answers questions with sarcastic responses.
-    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${dateString}.
+    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${timestamp}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
@@ -100,7 +100,7 @@ client.on(Events.MessageCreate, async message => {
       top_p: 0.5,
       presence_penalty: 0.25,
       frequency_penalty: 0.25,
-      stop: [`${timestamp} ${userName}:`, `${timestamp} ${botNickname}:`],
+      stop: [`${userName}:`, `${botNickname}:`],
     });
     return gptResponse;
   }
@@ -117,12 +117,12 @@ client.on(Events.MessageCreate, async message => {
   }
 
   async function sendResponse(message) {
-    let prompt = `${personality}${chatHistory}\n${timestamp} ${botNickname}:`;
+    let prompt = `${personality}${chatHistory}\n${botNickname}:`;
     console.log(`${personality}${chatHistory}`);
     const gptResponse = await generateResponse(prompt, message);
     let botResponse = `${gptResponse.data.choices[0].text.trim()}`;
     message.channel.send(botResponse);
-    console.log(`${timestamp} ${botNickname}: ${botResponse}`);
+    console.log(`${botNickname}: ${botResponse}`);
   }
 
   async function sendGeneratedImage(message) {
