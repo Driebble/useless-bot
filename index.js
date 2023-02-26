@@ -86,7 +86,7 @@ client.on(Events.MessageCreate, async message => {
 
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
-    ${botNickname} is a very sassy Discord bot that reluctantly answers questions.
+    ${botNickname} is a very sassy Discord bot that reluctantly answers questions with sarcastic responses.
     It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${dateString}.
   `).replace(/^\s+/gm, '');
   
