@@ -6,6 +6,14 @@ This is a basic Discord bot that uses OpenAI's GPT-3 API to generate text-based 
 
 OpenAI API is not free. Though you can start with free credits on your first sign up.
 
+## Features
+
+- Responds to messages with an OpenAI text-completion model API call.
+- Responds with a sarcastic tone by default. You can change this behaviour in the "personality" string.
+- Generates an image based on the user's message using OpenAI text-to-image model API call.
+- Pays attention to the channel for a specific amount of time.
+- Waits for a certain amount of time before responding to the message to prevent flooding the API with calls.
+
 ## Prerequisites
 
 Before running this bot, you will need to set up the following:
