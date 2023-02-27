@@ -6,9 +6,8 @@ const { Client, Collection, Events, ActivityType, GatewayIntentBits } = require(
 const { Configuration, OpenAIApi } = require("openai");
 
 const currentDate = new Date();
-const dateString = currentDate.toLocaleString();
+const dateString = currentDate.toLocaleString("en-US", { month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' });
 const timestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
-console.log(dateString);
 
 const client = new Client({ intents: [
 	GatewayIntentBits.Guilds,
@@ -77,18 +76,21 @@ client.on(Events.MessageCreate, async message => {
   const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
 
   const channel = message.channel;
-  const messages = await channel.messages.fetch({ limit: 6 }); // <- Pulls out the last 6 messages for context matching.
+  const hours = 60 * 60 * 1000;
+  const hoursAgo = Date.now() - 6 * hours; // <- Last X hours of which messages will be pulled.
+  const messages = await channel.messages.fetch({ limit: 6 }) // <- Pulls out the last X messages for context matching.
+    .then(messages => messages.filter(msg => msg.createdTimestamp >= hoursAgo));
   const messageArray = Array.from(messages.values()).reverse();
   const chatHistory = messageArray.map(msg => {
     const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username;
     const historyTimestamp = new Date(msg.createdTimestamp).toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
-    return `${historyTimestamp} ${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
+    return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
   }).join('\n');
 
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
   const personality = (`
     ${botNickname} is a very sassy Discord bot that reluctantly answers questions with sarcastic responses.
-    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${timestamp}.
+    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${dateString}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
