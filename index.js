@@ -6,12 +6,12 @@ const { Client, Collection, Events, ActivityType, GatewayIntentBits } = require(
 const { Configuration, OpenAIApi } = require("openai");
 
 const currentDate = new Date();
-const dateString = currentDate.toLocaleString("en-US", { month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' });
+const dateString = currentDate.toLocaleString("en-US", { year: '2-digit', month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' });
 const timestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
 
 const client = new Client({ intents: [
-	GatewayIntentBits.Guilds,
-	GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
   GatewayIntentBits.MessageContent,
 ]});
 
@@ -26,30 +26,30 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
   const command = require(filePath);
-	//  Set a new item in the Collection with the key as the command name and the value as the exported module
+  //  Set a new item in the Collection with the key as the command name and the value as the exported module
   if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
-	} else {
-		console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-	}
+  } else {
+    console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+  }
 }
 
 client.on(Events.InteractionCreate, async interaction => {
-	if (!interaction.isChatInputCommand()) return;
+  if (!interaction.isChatInputCommand()) return;
 
-	const command = interaction.client.commands.get(interaction.commandName);
+  const command = interaction.client.commands.get(interaction.commandName);
 
-	if (!command) {
-		console.error(`No command matching ${interaction.commandName} was found.`);
-		return;
-	}
+  if (!command) {
+    console.error(`No command matching ${interaction.commandName} was found.`);
+    return;
+  }
 
-	try {
-		await command.execute(interaction);
-	} catch (error) {
-		console.error(error);
-		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-	}
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+  }
 });
 
 client.once(Events.ClientReady, () => {
@@ -88,22 +88,17 @@ client.on(Events.MessageCreate, async message => {
   }).join('\n');
 
   // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
-  const personality = (`
-    ${botNickname} is a very sassy Discord bot that reluctantly answers questions with sarcastic responses.
-    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${dateString}.
+  const botPersonality = (`
+    You are ${botNickname}, a very sassy Discord bot that reluctantly answers questions with sarcastic responses.
+    You were created by Drie. You're currently in #${channelName} in server ${guildName} at ${dateString}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
-  async function generateResponse(prompt, userName, botNickname) {
-    const gptResponse = await openai.createCompletion({
-      model: "text-davinci-003",
-      prompt: prompt,
-      temperature: 1,
-      max_tokens: 50,
-      top_p: 0.5,
-      presence_penalty: 0.25,
-      frequency_penalty: 0.25,
-      stop: [`${userName}:`, `${botNickname}:`],
+  async function generateResponse(botPersonality, chatHistory) {
+    const gptResponse = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}`}],
+      temperature: 1
     });
     return gptResponse;
   }
@@ -120,12 +115,11 @@ client.on(Events.MessageCreate, async message => {
   }
 
   async function sendResponse(message) {
-    let prompt = `${personality}${chatHistory}\n${botNickname}:`;
-    console.log(`${personality}${chatHistory}`);
-    const gptResponse = await generateResponse(prompt, message);
-    let botResponse = `${gptResponse.data.choices[0].text.trim()}`;
+    console.log(`${userName}: ${userMessage}`)
+    const gptResponse = await generateResponse(botPersonality, chatHistory);
+    console.log(gptResponse.data.choices[0].message.content);
+    const botResponse = gptResponse.data.choices[0].message.content.substring(botNickname.length + 1).trim();
     message.channel.send(botResponse);
-    console.log(`${botNickname}: ${botResponse}`);
   }
 
   async function sendGeneratedImage(message) {
