@@ -47,6 +47,8 @@ OPENAI_KEY=<your OpenAI API key>
 
 ## Usage
 
+I recommend checking the code and modify to your preferences before running the bot.
+
 To start the bot, run:
 
 ```
