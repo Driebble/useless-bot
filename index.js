@@ -141,8 +141,8 @@ client.on(Events.MessageCreate, async message => {
     console.log(`${userName}: ${userMessage}`)
     const gptResponse = await generateResponse(botPersonality, chatHistory)
     const botResponse = gptResponse.data.choices[0].message.content.trim()
-    console.log(`${botNickname}: ${botResponse}`)
     message.channel.send(botResponse)
+    console.log(`${botNickname}: ${botResponse}`)
   }
 
   async function sendGeneratedImage(message) {
