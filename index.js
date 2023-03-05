@@ -56,10 +56,11 @@ client.on(Events.InteractionCreate, async interaction => {
 const statuses = [
   { status: `Distractible`, type: ActivityType.Listening },
   { status: `The WAN Show`, type: ActivityType.Listening },
+  { status: `Bigfoot Collecters Club`, type: ActivityType.Listening },
   { status: `The Last of Us`, type: ActivityType.Watching },
   { status: `Linus Tech Tips`, type: ActivityType.Watching },
   { status: `Game Changer`, type: ActivityType.Watching },
-  { status: `demenishki`, type: ActivityType.Watching },
+  { status: `Hogwarts Legacy`, type: ActivityType.Playing },
   { status: `Destiny 2`, type: ActivityType.Playing },
   { status: `Escape from Tarkov`, type: ActivityType.Playing },
   { status: `Squid Game`, type: ActivityType.Competing },
@@ -77,6 +78,7 @@ client.once(Events.ClientReady, () => {
   setInterval(() => setBotStatus(), 30000) // <- Set interval of when the bot will change the status randomly (in ms).
 })
 
+// Initializes context matching variables for later use.
 const lastResponseTime = {}
 let chatWait
 let timeoutId
@@ -93,11 +95,13 @@ client.on(Events.MessageCreate, async message => {
   const userMessage = message.content
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username
 
+  // Set number of last hours of which messages will be pulled.
   const hours = 60 * 60 * 1000
-  const hoursAgo = Date.now() - 6 * hours // <- Number of last hours of which messages will be pulled.
+  const hoursAgo = Date.now() - 6 * hours // <- Set it here.
 
+  // This code snippet collects the last messages for context matching.
   const channel = message.channel
-  const messages = await channel.messages.fetch({ limit: 5 }) // <- Number of messages will be pulled out for context matching.
+  const messages = await channel.messages.fetch({ limit: 11 }) // <- Number of messages will be collected for context matching.
     .then(messages => messages.filter(msg => msg.createdTimestamp >= hoursAgo))
   const messageArray = Array.from(messages.values()).reverse()
   const chatHistory = messageArray.map(msg => {
@@ -117,12 +121,12 @@ client.on(Events.MessageCreate, async message => {
     const gptResponse = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${chatTimestamp} ${botNickname}:`}],
-      temperature: 1
+      top_p: 0.5
     })
     return gptResponse
   }
 
-  // OpenAI text-to-image model API call begins here. Modify to your preferences.
+  // OpenAI Dall-E 2 model API call begins here. Modify to your preferences.
   async function generateImage(prompt) {
     const gptCreate = await openai.createImage({
       prompt: prompt,
