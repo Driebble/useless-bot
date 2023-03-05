@@ -7,7 +7,7 @@ This is a basic Discord bot that utilizes OpenAI's latest ChatGPT API to generat
 
 ## Warning!
 
-OpenAI API is not free. Though you can start with free credits on your first sign up. This code has been updated to utilize the `gpt-3.5-turbo` model. It's 10x more cheaper than the previous `text-davinci-003` model. Please check https://openai.com/pricing for mor details.
+OpenAI API is not free. Though you can start with free credits on your first sign up. This code has been updated to utilize the `gpt-3.5-turbo` model. It's 10x more cheaper than the previous `text-davinci-003` model. Please check https://openai.com/pricing for more details.
 
 ## Features
 
