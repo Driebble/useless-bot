@@ -1,7 +1,6 @@
 # Discord Bot with OpenAI's ChatGPT capabilities
 
-This is a basic Discord bot that utilizes OpenAI's latest ChatGPT API to generate text-based responses to user messages. <br/>
-It also includes integration with OpenAI's Dall-E 2 image-generation API to generate images based on user prompts.
+This is a basic Discord bot that utilizes OpenAI's latest ChatGPT API to generate text-based responses to user messages. It also includes integration with OpenAI's Dall-E 2 image-generation API to generate images based on user prompts.
 
 ## Warning!
 
