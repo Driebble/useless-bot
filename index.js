@@ -97,7 +97,7 @@ client.on(Events.MessageCreate, async message => {
   async function generateResponse(botPersonality, chatHistory) {
     const gptResponse = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
-      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}`}],
+      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${botNickname}:`}],
       temperature: 1
     });
     return gptResponse;
@@ -118,7 +118,7 @@ client.on(Events.MessageCreate, async message => {
     console.log(`${userName}: ${userMessage}`)
     const gptResponse = await generateResponse(botPersonality, chatHistory);
     console.log(gptResponse.data.choices[0].message.content);
-    const botResponse = gptResponse.data.choices[0].message.content.substring(botNickname.length + 1).trim();
+    const botResponse = gptResponse.data.choices[0].message.content.trim();
     message.channel.send(botResponse);
   }
 
