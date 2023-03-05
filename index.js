@@ -6,13 +6,12 @@ const { Client, Collection, Events, ActivityType, GatewayIntentBits } = require(
 const { Configuration, OpenAIApi } = require("openai");
 
 const currentDate = new Date();
-const dateString = currentDate.toLocaleString();
-const timestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
-console.log(dateString);
+const dateString = currentDate.toLocaleString("en-US", { year: '2-digit', month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' });
+const chatTimestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
 
 const client = new Client({ intents: [
-	GatewayIntentBits.Guilds,
-	GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
   GatewayIntentBits.MessageContent,
 ]});
 
@@ -27,30 +26,30 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
   const command = require(filePath);
-	//  Set a new item in the Collection with the key as the command name and the value as the exported module
+  //  Set a new item in the Collection with the key as the command name and the value as the exported module
   if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
-	} else {
-		console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-	}
+  } else {
+    console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+  }
 }
 
 client.on(Events.InteractionCreate, async interaction => {
-	if (!interaction.isChatInputCommand()) return;
+  if (!interaction.isChatInputCommand()) return;
 
-	const command = interaction.client.commands.get(interaction.commandName);
+  const command = interaction.client.commands.get(interaction.commandName);
 
-	if (!command) {
-		console.error(`No command matching ${interaction.commandName} was found.`);
-		return;
-	}
+  if (!command) {
+    console.error(`No command matching ${interaction.commandName} was found.`);
+    return;
+  }
 
-	try {
-		await command.execute(interaction);
-	} catch (error) {
-		console.error(error);
-		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-	}
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+  }
 });
 
 client.once(Events.ClientReady, () => {
@@ -74,10 +73,12 @@ client.on(Events.MessageCreate, async message => {
   const userMessage = message.content;
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
 
-  const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
+  const hours = 60 * 60 * 1000;
+  const hoursAgo = Date.now() - 6 * hours; // <- Number of last hours of which messages will be pulled.
 
   const channel = message.channel;
-  const messages = await channel.messages.fetch({ limit: 6 }); // <- Pulls out the last 6 messages for context matching.
+  const messages = await channel.messages.fetch({ limit: 5 }) // <- Number of messages will be pulled out for context matching.
+    .then(messages => messages.filter(msg => msg.createdTimestamp >= hoursAgo));
   const messageArray = Array.from(messages.values()).reverse();
   const chatHistory = messageArray.map(msg => {
     const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username;
@@ -85,23 +86,18 @@ client.on(Events.MessageCreate, async message => {
     return `${historyTimestamp} ${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
   }).join('\n');
 
-  // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
-  const personality = (`
-    ${botNickname} is a very sassy Discord bot that reluctantly answers questions with sarcastic responses.
-    It was created by Drie. It's currently in #${channelName} in server ${guildName} at ${timestamp}.
+  // Set bot's personality. Modify to your preferences.
+  const botPersonality = (`
+    ${botNickname} is a sassy, though very smart and helpful Discord bot that reluctantly answers questions with sarcastic responses.
+    It was created by Drie. Currently in #${channelName} in server ${guildName} at ${dateString}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
-  async function generateResponse(prompt, userName, botNickname) {
-    const gptResponse = await openai.createCompletion({
-      model: "text-davinci-003",
-      prompt: prompt,
-      temperature: 1,
-      max_tokens: 50,
-      top_p: 0.5,
-      presence_penalty: 0.25,
-      frequency_penalty: 0.25,
-      stop: [`${userName}:`, `${botNickname}:`],
+  async function generateResponse(botPersonality, chatHistory) {
+    const gptResponse = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${chatTimestamp} ${botNickname}:`}],
+      temperature: 1
     });
     return gptResponse;
   }
@@ -118,12 +114,11 @@ client.on(Events.MessageCreate, async message => {
   }
 
   async function sendResponse(message) {
-    let prompt = `${personality}${chatHistory}\n${botNickname}:`;
-    console.log(`${personality}${chatHistory}`);
-    const gptResponse = await generateResponse(prompt, message);
-    let botResponse = `${gptResponse.data.choices[0].text.trim()}`;
-    message.channel.send(botResponse);
+    console.log(`${userName}: ${userMessage}`)
+    const gptResponse = await generateResponse(botPersonality, chatHistory);
+    const botResponse = gptResponse.data.choices[0].message.content.trim();
     console.log(`${botNickname}: ${botResponse}`);
+    message.channel.send(botResponse);
   }
 
   async function sendGeneratedImage(message) {
@@ -138,11 +133,14 @@ client.on(Events.MessageCreate, async message => {
     console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`);
   }
 
+  // Set how the bot should be called to repond to messages. Modify to your preferences.
+  const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
+
   // Set how long the bot will pay attention to the channel (in ms).
   const attentionTime = 60000;
 
   // Set how long the bot will wait for people to stop sending chat before replying (in ms).
-  const waitTime = 5000;
+  const waitTime = 3000;
 
   if (botCalled && (!lastResponseTime[channelId]) && userMessage.toLowerCase().includes('imagine')) {
     clearTimeout(timeoutId);
