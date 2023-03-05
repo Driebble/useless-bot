@@ -7,7 +7,7 @@ const { Configuration, OpenAIApi } = require("openai");
 
 const currentDate = new Date();
 const dateString = currentDate.toLocaleString("en-US", { year: '2-digit', month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' });
-const timestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
+const chatTimestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
 
 const client = new Client({ intents: [
   GatewayIntentBits.Guilds,
@@ -73,31 +73,30 @@ client.on(Events.MessageCreate, async message => {
   const userMessage = message.content;
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
 
-  const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
+  const hours = 60 * 60 * 1000;
+  const hoursAgo = Date.now() - 6 * hours; // <- Number of last hours of which messages will be pulled.
 
   const channel = message.channel;
-  const hours = 60 * 60 * 1000;
-  const hoursAgo = Date.now() - 6 * hours; // <- Last X hours of which messages will be pulled.
-  const messages = await channel.messages.fetch({ limit: 6 }) // <- Pulls out the last X messages for context matching.
+  const messages = await channel.messages.fetch({ limit: 5 }) // <- Number of messages will be pulled out for context matching.
     .then(messages => messages.filter(msg => msg.createdTimestamp >= hoursAgo));
   const messageArray = Array.from(messages.values()).reverse();
   const chatHistory = messageArray.map(msg => {
     const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username;
     const historyTimestamp = new Date(msg.createdTimestamp).toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
-    return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
+    return `${historyTimestamp} ${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
   }).join('\n');
 
-  // Set bot's personality. Leave blank for a generic chatbot. Modify to your preferences.
+  // Set bot's personality. Modify to your preferences.
   const botPersonality = (`
-    You are ${botNickname}, a very sassy Discord bot that reluctantly answers questions with sarcastic responses.
-    You were created by Drie. You're currently in #${channelName} in server ${guildName} at ${dateString}.
+    ${botNickname} is a sassy, though very smart and helpful Discord bot that reluctantly answers questions with sarcastic responses.
+    It was created by Drie. Currently in #${channelName} in server ${guildName} at ${dateString}.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
   async function generateResponse(botPersonality, chatHistory) {
     const gptResponse = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
-      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${botNickname}:`}],
+      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${chatTimestamp} ${botNickname}:`}],
       temperature: 1
     });
     return gptResponse;
@@ -117,8 +116,8 @@ client.on(Events.MessageCreate, async message => {
   async function sendResponse(message) {
     console.log(`${userName}: ${userMessage}`)
     const gptResponse = await generateResponse(botPersonality, chatHistory);
-    console.log(gptResponse.data.choices[0].message.content);
     const botResponse = gptResponse.data.choices[0].message.content.trim();
+    console.log(`${botNickname}: ${botResponse}`);
     message.channel.send(botResponse);
   }
 
@@ -134,11 +133,14 @@ client.on(Events.MessageCreate, async message => {
     console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`);
   }
 
+  // Set how the bot should be called to repond to messages. Modify to your preferences.
+  const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
+
   // Set how long the bot will pay attention to the channel (in ms).
   const attentionTime = 60000;
 
   // Set how long the bot will wait for people to stop sending chat before replying (in ms).
-  const waitTime = 5000;
+  const waitTime = 3000;
 
   if (botCalled && (!lastResponseTime[channelId]) && userMessage.toLowerCase().includes('imagine')) {
     clearTimeout(timeoutId);
