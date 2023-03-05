@@ -2,6 +2,12 @@
 
 This is a basic Discord bot that utilizes OpenAI's latest ChatGPT API to generate text-based responses to user messages. It also includes integration with OpenAI's Dall-E 2 image-generation API to generate images based on user prompts.
 
+![](assets\sample\160507.png)
+![](assets\sample\160851.png)
+![](assets\sample\161136.png)
+![](assets\sample\161450.png)
+![](assets\sample\162259.png)
+
 ## Warning!
 
 OpenAI API is not free. Though you can start with free credits on your first sign up. This code has been updated to utilize the `gpt-3.5-turbo` model. It's 10x more cheaper than the previous `text-davinci-003` model. Please check https://openai.com/pricing for mor details.
