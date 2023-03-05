@@ -1,17 +1,20 @@
-# Discord Bot with OpenAI Integration
+# Discord Bot with OpenAI's ChatGPT capabilities
 
-This is a basic Discord bot that uses OpenAI's GPT-3 API to generate text-based responses to user messages. It also includes integration with OpenAI's Dall-E image-generation API to generate images based on user prompts.
+This is a basic Discord bot that utilizes OpenAI's latest ChatGPT API to generate text-based responses to user messages. <br/>
+It also includes integration with OpenAI's Dall-E 2 image-generation API to generate images based on user prompts.
 
 ## Warning!
 
-OpenAI API is not free. Though you can start with free credits on your first sign up.
+OpenAI API is not free. Though you can start with free credits on your first sign up. <br/>
+This code has been updated to utilize the `gpt-3.5-turbo` model. It's 10x more cheaper than the previous `text-davinci-003` model. <br/>
+Please check https://openai.com/pricing for mor details.
 
 ## Features
 
 - Responds to messages with an OpenAI text-completion model API call.
-- Responds with a sarcastic tone by default. You can change this behaviour in the "personality" string.
-- Generates an image based on the user's message using OpenAI text-to-image model API call.
-- Pays attention to the channel for a specific amount of time.
+- Responds with a sarcastic tone by default. You can change this behaviour in the `botPersonality` variable.
+- Generates an image based on the user's message using OpenAI Dall-E 2 model API call.
+- Pays attention to the channel for a specific amount of time when the bot is called.
 - Waits for a certain amount of time before responding to the message to prevent flooding the API with calls.
 
 ## Prerequisites
@@ -23,6 +26,14 @@ Before running this bot, you will need to set up the following:
 - An OpenAI API key (see https://beta.openai.com/signup/)
 
 ## Installation
+
+### Dependencies
+
+This bot relies on the following dependencies:
+
+- dotenv
+- discord.js
+- openai
 
 To install the necessary dependencies, run:
 
@@ -44,15 +55,6 @@ To start the bot, run:
 ```
 node index.js
 ```
-
-## Dependencies
-
-This bot relies on the following dependencies:
-
-- dotenv
-- discord.js
-- openai
-- node
 
 ## License
 
