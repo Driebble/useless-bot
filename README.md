@@ -2,7 +2,8 @@
 
 This is a basic Discord bot that utilizes OpenAI's latest ChatGPT API to generate text-based responses to user messages. It also includes integration with OpenAI's Dall-E 2 image-generation API to generate images based on user prompts.
 
-<img src="assets/sample/160507.png" alt="alt text" width="200"> <img src="assets/sample/160851.png" alt="alt text" width="200"> <img src="assets/sample/161136.png" alt="alt text" width="200"> <img src="assets/sample/161450.png" alt="alt text" width="200"> <img src="assets/sample/162259.png" alt="alt text" width="200">
+<img src="assets/sample/160507.png" alt="alt text" width="200"> <img src="assets/sample/160851.png" alt="alt text" width="200"> <br/>
+<img src="assets/sample/161136.png" alt="alt text" width="200"> <img src="assets/sample/161450.png" alt="alt text" width="200"> <img src="assets/sample/162259.png" alt="alt text" width="200">
 
 ## Warning!
 
