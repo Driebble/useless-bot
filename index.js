@@ -61,7 +61,7 @@ const statuses = [
   { status: `Linus Tech Tips`, type: ActivityType.Watching },
   { status: `Game Changer`, type: ActivityType.Watching },
   { status: `Hogwarts Legacy`, type: ActivityType.Playing },
-  { status: `Destiny 2`, type: ActivityType.Playing },
+  { status: `Destiny 2: Lightfall`, type: ActivityType.Playing },
   { status: `Escape from Tarkov`, type: ActivityType.Playing },
   { status: `Squid Game`, type: ActivityType.Competing },
 ]
@@ -101,7 +101,7 @@ client.on(Events.MessageCreate, async message => {
 
   // This code snippet collects the last messages for context matching.
   const channel = message.channel
-  const messages = await channel.messages.fetch({ limit: 11 }) // <- Number of messages will be collected for context matching.
+  const messages = await channel.messages.fetch({ limit: 10 }) // <- Number of messages will be collected for context matching.
     .then(messages => messages.filter(msg => msg.createdTimestamp >= hoursAgo))
   const messageArray = Array.from(messages.values()).reverse()
   const chatHistory = messageArray.map(msg => {
@@ -123,7 +123,8 @@ client.on(Events.MessageCreate, async message => {
       messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${chatTimestamp} ${botNickname}:`}],
       temperature: 1,
       presence_penalty: 1,
-      frequency_penalty: 1
+      frequency_penalty: 1,
+      stop: [`${userName}:`, `${botNickname}:`]
     })
     return gptResponse
   }
