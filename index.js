@@ -121,7 +121,9 @@ client.on(Events.MessageCreate, async message => {
     const gptResponse = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${chatTimestamp} ${botNickname}:`}],
-      top_p: 0.5
+      temperature: 1,
+      presence_penalty: 1,
+      frequency_penalty: 1
     })
     return gptResponse
   }
