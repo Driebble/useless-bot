@@ -52,11 +52,19 @@ OPENAI_KEY=<your OpenAI API key>
 
 I recommend checking the code and modify to your preferences before running the bot.
 
+Get your bot's Application ID on the Discord Developer Portal and add the bot to your server with this link:
+
+```
+https://discord.com/oauth2/authorize?client_id=<YOUR_BOT_APPLICATION_ID>&scope=bot%20applications.commands&permissions=379968
+```
+
 To start the bot, run:
 
 ```
 node index.js
 ```
+
+The bot's default name is "Useless" but you can set any nickname you want on the Discord Server. To call the bot just mention the bot in any channel it has access to or type the name (or nickname you already set for it). Examples in my screenshots at the beginning of the README. Notice I always put my bot's nickname anywhere in the first message to sort of "wake" the bot, and then the bot will keep replying to the channel as long as I keep a conversation going. The default timeout is 60 seconds. After 60 seconds the bot will stop listening to the channel until you call the bot again with a mention or its nickname.
 
 ## License
 
