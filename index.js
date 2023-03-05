@@ -101,7 +101,7 @@ client.on(Events.MessageCreate, async message => {
 
   // This code snippet collects the last messages for context matching.
   const channel = message.channel
-  const messages = await channel.messages.fetch({ limit: 10 }) // <- Number of messages will be collected for context matching.
+  const messages = await channel.messages.fetch({ limit: 12 }) // <- Number of messages will be collected for context matching.
     .then(messages => messages.filter(msg => msg.createdTimestamp >= hoursAgo))
   const messageArray = Array.from(messages.values()).reverse()
   const chatHistory = messageArray.map(msg => {
