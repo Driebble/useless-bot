@@ -85,15 +85,23 @@ let timeoutId
 
 client.on(Events.MessageCreate, async message => {
   if (message.author.bot) return
-
+  
   const idPattern = /<@\d+>/g
   const guildId = message.guild.id
   const guildName = message.guild.name
   const channelId = message.channel.id
   const channelName = message.channel.name
-  const userName = message.author.username
+  const userName = message.member.nickname || message.author.username
   const userMessage = message.content
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username
+  
+  const guild = client.guilds.cache.get(guildId)
+  const botNamesWithNicknames = [];
+  guild.members.cache.filter(member => member.user.bot).forEach(botMember => {
+    const nickname = botMember.nickname;
+    const name = nickname ? nickname : botMember.user.username;
+    botNamesWithNicknames.push(name);
+  });
 
   // Set number of last hours of which messages will be pulled.
   const hours = 60 * 60 * 1000
@@ -107,20 +115,20 @@ client.on(Events.MessageCreate, async message => {
   const chatHistory = messageArray.map(msg => {
     const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username
     const historyTimestamp = new Date(msg.createdTimestamp).toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' })
-    return `${historyTimestamp} ${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`
+    return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`
   }).join('\n')
 
   // Set bot's personality. Modify to your preferences.
   const botPersonality = (`
     ${botNickname} is a sassy, though very smart and helpful Discord bot that reluctantly answers questions with sarcastic responses.
-    It was created by Drie. Currently in #${channelName} in server ${guildName} at ${dateString}.
+    It was created by Drie. Currently in #${channelName} channel in ${guildName} server at ${dateString}.
   `).replace(/^\s+/gm, '')
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
   async function generateResponse(botPersonality, chatHistory) {
     const gptResponse = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
-      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${chatTimestamp} ${botNickname}:`}],
+      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${botNickname}:`}],
       temperature: 1,
       presence_penalty: 1,
       frequency_penalty: 1,
