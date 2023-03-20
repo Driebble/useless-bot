@@ -64,7 +64,7 @@ To start the bot, run:
 node index.js
 ```
 
-You can set any nickname for the bot you want on the Discord Server. To call the bot just mention the bot in any channel it has access to or type the name (or nickname you already set for it). Examples in my screenshots at the beginning of the README. My bot's name is actually Useless#1289, but notice I always put my bot's nickname anywhere in the first message to sort of "wake" the bot. And then the bot will keep replying to the channel as long as I keep a conversation going. The default timeout is 60 seconds. After 60 seconds the bot will stop listening to the channel until you call the bot again with a mention or its nickname.
+If you would like to give your bot a custom nickname on your Discord server, you are welcome to do so. To summon your bot, you can either mention it in any channel where it has access, or you can type out its name or nickname if you have already set one. For reference, I have included examples in the screenshots at the beginning of the README. Although my bot's actual name is Useless#1289, I always use its nickname in the first message to "wake" the bot up. Once the bot is active, it will continue to respond in the channel as long as the conversation continues. By default, the bot will time out after 60 seconds of inactivity, at which point it will stop listening until it is called again using a mention or its nickname.
 
 ## License
 
