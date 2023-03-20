@@ -96,21 +96,16 @@ client.on(Events.MessageCreate, async message => {
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username
   
   const guild = client.guilds.cache.get(guildId)
-  const botNamesWithNicknames = [];
+  const botNamesWithNicknames = []
   guild.members.cache.filter(member => member.user.bot).forEach(botMember => {
-    const nickname = botMember.nickname;
-    const name = nickname ? nickname : botMember.user.username;
-    botNamesWithNicknames.push(name);
-  });
-
-  // Set number of last hours of which messages will be pulled.
-  const hours = 60 * 60 * 1000
-  const hoursAgo = Date.now() - 6 * hours // <- Set it here.
+    const nickname = botMember.nickname
+    const name = nickname ? nickname : botMember.user.username
+    botNamesWithNicknames.push(name)
+  })
 
   // This code snippet collects the last messages for context matching.
   const channel = message.channel
   const messages = await channel.messages.fetch({ limit: 12 }) // <- Number of messages will be collected for context matching.
-    .then(messages => messages.filter(msg => msg.createdTimestamp >= hoursAgo))
   const messageArray = Array.from(messages.values()).reverse()
   const chatHistory = messageArray.map(msg => {
     const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username
@@ -183,6 +178,14 @@ client.on(Events.MessageCreate, async message => {
     lastResponseTime[channelId] = Date.now()
     console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`)
     timeoutId = setTimeout(() => stopAttention(channelId), attentionTime)
+  } else if (Date.now() - lastResponseTime[channelId] <= attentionTime && userMessage.toLowerCase().includes('imagine')) {
+    clearTimeout(chatWait)
+    chatWait = setTimeout(() => {
+      clearTimeout(timeoutId)
+      sendGeneratedImage(message)
+      lastResponseTime[channelId] = Date.now()
+      timeoutId = setTimeout(() => stopAttention(channelId), attentionTime)
+    }, waitTime)
   } else if (botCalled && (!lastResponseTime[channelId])) {
     clearTimeout(timeoutId)
     sendResponse(message)
@@ -194,14 +197,6 @@ client.on(Events.MessageCreate, async message => {
     chatWait = setTimeout(() => {
       clearTimeout(timeoutId)
       sendResponse(message)
-      lastResponseTime[channelId] = Date.now()
-      timeoutId = setTimeout(() => stopAttention(channelId), attentionTime)
-    }, waitTime)
-  } else if (Date.now() - lastResponseTime[channelId] <= attentionTime && userMessage.toLowerCase().includes('imagine')) {
-    clearTimeout(chatWait)
-    chatWait = setTimeout(() => {
-      clearTimeout(timeoutId)
-      sendGeneratedImage(message)
       lastResponseTime[channelId] = Date.now()
       timeoutId = setTimeout(() => stopAttention(channelId), attentionTime)
     }, waitTime)
