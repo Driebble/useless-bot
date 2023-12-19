@@ -1,13 +1,12 @@
-require('dotenv').config()
-const fs = require('node:fs')
-const path = require('node:path')
+import dotenv from 'dotenv'
+import OpenAI from 'openai'
+import { Client, Events, ActivityType, GatewayIntentBits } from 'discord.js'
 
-const { Client, Collection, Events, ActivityType, GatewayIntentBits } = require('discord.js')
-const { Configuration, OpenAIApi } = require("openai")
+dotenv.config()
 
-const currentDate = new Date()
-const dateString = currentDate.toLocaleString("en-US", { year: '2-digit', month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' })
-const chatTimestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' })
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 const client = new Client({ intents: [
   GatewayIntentBits.Guilds,
@@ -15,55 +14,30 @@ const client = new Client({ intents: [
   GatewayIntentBits.MessageContent,
 ]})
 
-const configuration = new Configuration({ apiKey: process.env.OPENAIKEY })
-const openai = new OpenAIApi(configuration)
-
-client.commands = new Collection()
-
-const commandsPath = path.join(__dirname, 'commands')
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'))
-
-for (const file of commandFiles) {
-  const filePath = path.join(commandsPath, file)
-  const command = require(filePath)
-  //  Set a new item in the Collection with the key as the command name and the value as the exported module
-  if ('data' in command && 'execute' in command) {
-    client.commands.set(command.data.name, command)
-  } else {
-    console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`)
-  }
+const ping = {
+  name: 'ping',
+  description: 'Pings the bot and shows the latency.'
 }
 
-client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isChatInputCommand()) return
+const commands = [ping]
 
-  const command = interaction.client.commands.get(interaction.commandName)
-
-  if (!command) {
-    console.error(`No command matching ${interaction.commandName} was found.`)
-    return
-  }
-
-  try {
-    await command.execute(interaction)
-  } catch (error) {
-    console.error(error)
-    await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true })
+client.on('interactionCreate', (interaction) => {
+  if (interaction.commandName === 'ping') {
+    interaction.reply(`Latency is ${Date.now() - interaction.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);  
+  } else { // A response if you forget to add the command here.
+    interaction.reply('Command unavailable.');
   }
 })
+
+const currentDate = new Date()
+const dateString = currentDate.toLocaleString("en-US", { year: '2-digit', month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' })
+const chatTimestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' })
 
 // Set various bot statuses here. Modify to your preferences.
 const statuses = [
   { status: `Distractible`, type: ActivityType.Listening },
   { status: `The WAN Show`, type: ActivityType.Listening },
-  { status: `Bigfoot Collecters Club`, type: ActivityType.Listening },
-  { status: `The Last of Us`, type: ActivityType.Watching },
   { status: `Linus Tech Tips`, type: ActivityType.Watching },
-  { status: `Game Changer`, type: ActivityType.Watching },
-  { status: `Hogwarts Legacy`, type: ActivityType.Playing },
-  { status: `Destiny 2: Lightfall`, type: ActivityType.Playing },
-  { status: `Escape from Tarkov`, type: ActivityType.Playing },
-  { status: `Squid Game`, type: ActivityType.Competing },
 ]
 
 function setBotStatus() {
