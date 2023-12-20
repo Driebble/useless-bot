@@ -19,13 +19,11 @@ const ping = {
   description: 'Pings the bot and shows the latency.'
 }
 
-const commands = [ping]
-
 client.on('interactionCreate', (interaction) => {
   if (interaction.commandName === 'ping') {
-    interaction.reply(`Latency is ${Date.now() - interaction.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms`);  
+    interaction.reply(`Latency is ${Date.now() - interaction.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms.`)
   } else { // A response if you forget to add the command here.
-    interaction.reply('Command unavailable.');
+    interaction.reply('Command unavailable.')
   }
 })
 
