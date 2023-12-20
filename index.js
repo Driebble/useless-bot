@@ -36,6 +36,8 @@ const statuses = [
   { status: `Distractible`, type: ActivityType.Listening },
   { status: `The WAN Show`, type: ActivityType.Listening },
   { status: `Linus Tech Tips`, type: ActivityType.Watching },
+  { status: `Lethal Company`, type: ActivityType.Playing },
+  { status: `VALORANT`, type: ActivityType.Playing }
 ]
 
 function setBotStatus() {
@@ -63,7 +65,7 @@ client.on(Events.MessageCreate, async message => {
   const guildName = message.guild.name
   const channelId = message.channel.id
   const channelName = message.channel.name
-  const userName = message.member.nickname || message.author.username
+  const userName = message.author.username || message.member.nickname
   const userMessage = message.content
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username
   
@@ -93,7 +95,7 @@ client.on(Events.MessageCreate, async message => {
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
   async function generateResponse(botPersonality, chatHistory) {
-    const gptResponse = await openai.createChatCompletion({
+    const gptResponse = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${botNickname}:`}],
       temperature: 1,
@@ -104,30 +106,12 @@ client.on(Events.MessageCreate, async message => {
     return gptResponse
   }
 
-  // OpenAI Dall-E 2 model API call begins here. Modify to your preferences.
-  async function generateImage(prompt) {
-    const gptCreate = await openai.createImage({
-      prompt: prompt,
-      n: 1,
-      size: "512x512",
-    })
-    const gptImage = gptCreate.data.data[0].url
-    return gptImage
-  }
-
   async function sendResponse(message) {
     console.log(`${userName}: ${userMessage}`)
     const gptResponse = await generateResponse(botPersonality, chatHistory)
-    const botResponse = gptResponse.data.choices[0].message.content.trim()
+    const botResponse = gptResponse.choices[0].message.content.trim()
     message.channel.send(botResponse)
     console.log(`${botNickname}: ${botResponse}`)
-  }
-
-  async function sendGeneratedImage(message) {
-    let prompt = `${userMessage.toLowerCase().replace(idPattern, "").replace(botNickname.toLowerCase(), '').replace('imagine', '').trim()}`
-    console.log(`\x1b[32mImagine prompt by ${userName} from ${guildName}: \n"${prompt}"\x1b[0m`)
-    const gptImage = await generateImage(prompt)
-    message.channel.send(gptImage)
   }
 
   function stopAttention(channelId) {
@@ -139,26 +123,12 @@ client.on(Events.MessageCreate, async message => {
   const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id)
 
   // Set how long the bot will pay attention to the channel (in ms).
-  const attentionTime = 60000
+  const attentionTime = 90000
 
   // Set how long the bot will wait for people to stop sending chat before replying (in ms).
-  const waitTime = 3000
+  const waitTime = 5000
 
-  if (botCalled && (!lastResponseTime[channelId]) && userMessage.toLowerCase().includes('imagine')) {
-    clearTimeout(timeoutId)
-    sendGeneratedImage(message)
-    lastResponseTime[channelId] = Date.now()
-    console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`)
-    timeoutId = setTimeout(() => stopAttention(channelId), attentionTime)
-  } else if (Date.now() - lastResponseTime[channelId] <= attentionTime && userMessage.toLowerCase().includes('imagine')) {
-    clearTimeout(chatWait)
-    chatWait = setTimeout(() => {
-      clearTimeout(timeoutId)
-      sendGeneratedImage(message)
-      lastResponseTime[channelId] = Date.now()
-      timeoutId = setTimeout(() => stopAttention(channelId), attentionTime)
-    }, waitTime)
-  } else if (botCalled && (!lastResponseTime[channelId])) {
+  if (botCalled && (!lastResponseTime[channelId])) {
     clearTimeout(timeoutId)
     sendResponse(message)
     lastResponseTime[channelId] = Date.now()
