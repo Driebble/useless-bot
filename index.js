@@ -17,21 +17,13 @@ const client = new Client({ intents: [
 const ping = {
   name: 'ping',
   description: 'Pings the bot and shows the latency.'
-<<<<<<< Updated upstream
-}
-=======
 };
->>>>>>> Stashed changes
 
 client.on('interactionCreate', (interaction) => {
   if (interaction.commandName === 'ping') {
     interaction.reply(`Latency is ${Date.now() - interaction.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms.`)
   } else { // A response if you forget to add the command here.
-<<<<<<< Updated upstream
-    interaction.reply('Command unavailable.')
-=======
     interaction.reply('Command unrecognized.');
->>>>>>> Stashed changes
   }
 });
 
@@ -44,13 +36,7 @@ const statuses = [
   { status: `Distractible`, type: ActivityType.Listening },
   { status: `The WAN Show`, type: ActivityType.Listening },
   { status: `Linus Tech Tips`, type: ActivityType.Watching },
-<<<<<<< Updated upstream
-  { status: `Lethal Company`, type: ActivityType.Playing },
-  { status: `VALORANT`, type: ActivityType.Playing }
-]
-=======
 ];
->>>>>>> Stashed changes
 
 function setBotStatus() {
   const randomIndex = Math.floor(Math.random() * statuses.length)
@@ -72,16 +58,6 @@ let timeoutId;
 client.on(Events.MessageCreate, async message => {
   if (message.author.bot) return;
   
-<<<<<<< Updated upstream
-  const idPattern = /<@\d+>/g
-  const guildId = message.guild.id
-  const guildName = message.guild.name
-  const channelId = message.channel.id
-  const channelName = message.channel.name
-  const userName = message.author.username || message.member.nickname
-  const userMessage = message.content
-  const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username
-=======
   const idPattern = /<@\d+>/g;
   const guildId = message.guild.id;
   const guildName = message.guild.name;
@@ -90,7 +66,6 @@ client.on(Events.MessageCreate, async message => {
   const userName = message.member.nickname || message.author.username;
   const userMessage = message.content;
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
->>>>>>> Stashed changes
   
   const guild = client.guilds.cache.get(guildId);
   const botNamesWithNicknames = [];
