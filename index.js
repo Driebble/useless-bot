@@ -12,7 +12,7 @@ const openai = new OpenAI(({
 const client = new Client({ intents: [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages,
-  GatewayIntentBits.MessageContent,
+  GatewayIntentBits.MessageContent
 ]});
 
 const ping = {
@@ -22,7 +22,7 @@ const ping = {
 
 client.on('interactionCreate', (interaction) => {
   if (interaction.commandName === 'ping') {
-    interaction.reply(`Latency is ${Date.now() - interaction.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms.`)
+    interaction.reply(`Latency is ${Date.now() - interaction.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms.`);
   } else { // A response if you forget to add the command here.
     interaction.reply('Command unrecognized.');
   }
@@ -40,9 +40,9 @@ const statuses = [
 ];
 
 function setBotStatus() {
-  const randomIndex = Math.floor(Math.random() * statuses.length)
-  const { status, type } = statuses[randomIndex]
-  client.user.setActivity(status, { type })
+  const randomIndex = Math.floor(Math.random() * statuses.length);
+  const { status, type } = statuses[randomIndex];
+  client.user.setActivity(status, { type });
 };
 
 client.once(Events.ClientReady, () => {
@@ -77,72 +77,75 @@ client.on(Events.MessageCreate, async message => {
   })
 
   // This code snippet collects the last messages for context matching.
-  const channel = message.channel
-  const messages = await channel.messages.fetch({ limit: 12 }) // <- Number of messages will be collected for context matching.
-  const messageArray = Array.from(messages.values()).reverse()
+  const channel = message.channel;
+  const messages = await channel.messages.fetch({ limit: 12 }); // <- Number of messages will be collected for context matching.
+  const messageArray = Array.from(messages.values()).reverse();
   const chatHistory = messageArray.map(msg => {
-    const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username
-    const historyTimestamp = new Date(msg.createdTimestamp).toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' })
-    return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`
-  }).join('\n')
+    const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username;
+    const historyTimestamp = new Date(msg.createdTimestamp).toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
+    return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
+  }).join('\n');
 
   // Set bot's personality. Modify to your preferences.
   const botPersonality = (`
-    ${botNickname} is a sassy, though very smart and helpful Discord bot that reluctantly answers questions with sarcastic responses.
-    It reponds as concise and as brief as possible. Only answers with one sentence, or two at maximum.
-    It was created by Drie. Currently in #${channelName} channel in ${guildName} server at ${dateString}.
-  `).replace(/^\s+/gm, '')
+    ${botNickname} is a very sassy, though very smart and helpful Discord bot that reluctantly answers questions with sarcastic responses.
+    It reponds as concise and as brief as possible. Only answers with one sentence, or two at maximum. No extra line breaks at all.
+    It was created by Drie. Currently in #${channelName} channel in ${guildName} server at ${dateString} GMT+7.
+  `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
   async function generateResponse(botPersonality, chatHistory) {
     const gptResponse = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
       messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${botNickname}:`}],
-      temperature: 1,
-      presence_penalty: 1,
-      frequency_penalty: 1,
+      temperature: 1.53,
+      top_p: 0.64,
+      top_k: 33,
+      repetition_penalty: 1.07,
+      presence_penalty: 0,
+      frequency_penalty: 0,
       stop: [`${userName}:`, `${botNickname}:`]
-    })
-    return gptResponse
-  }
+    });
+    return gptResponse;
+  };
 
   async function sendResponse(message) {
-    console.log(`${userName}: ${userMessage}`)
-    const gptResponse = await generateResponse(botPersonality, chatHistory)
-    const botResponse = gptResponse.choices[0].message.content.trim()
-    message.channel.send(botResponse)
-    console.log(`${botNickname}: ${botResponse}`)
-  }
+    console.log(chatHistory);
+    // console.log(`${userName}: ${userMessage}`);
+    const gptResponse = await generateResponse(botPersonality, chatHistory);
+    const botResponse = gptResponse.choices[0].message.content.trim();
+    message.channel.send(botResponse);
+    console.log(`${botNickname}: ${botResponse}`);
+  };
 
   function stopAttention(channelId) {
-    lastResponseTime[channelId] = null
-    console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`)
+    lastResponseTime[channelId] = null;
+    console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`);
   }
 
   // Set how the bot should be called to repond to messages. Modify to your preferences.
-  const botCalled = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id)
+  const botCall = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
 
   // Set how long the bot will pay attention to the channel (in ms).
-  const attentionTime = 90000
+  const attentionTime = 90000;
 
   // Set how long the bot will wait for people to stop sending chat before replying (in ms).
-  const waitTime = 5000
+  const waitTime = 3000;
 
-  if (botCalled && (!lastResponseTime[channelId])) {
-    clearTimeout(timeoutId)
-    sendResponse(message)
-    lastResponseTime[channelId] = Date.now()
-    console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`)
-    timeoutId = setTimeout(() => stopAttention(channelId), attentionTime)
+  if (botCall && (!lastResponseTime[channelId])) {
+    clearTimeout(timeoutId);
+    sendResponse(message);
+    lastResponseTime[channelId] = Date.now();
+    console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
+    timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
   } else if (Date.now() - lastResponseTime[channelId] <= attentionTime) {
-    clearTimeout(chatWait)
+    clearTimeout(chatWait);
     chatWait = setTimeout(() => {
-      clearTimeout(timeoutId)
-      sendResponse(message)
-      lastResponseTime[channelId] = Date.now()
-      timeoutId = setTimeout(() => stopAttention(channelId), attentionTime)
-    }, waitTime)
-  }
-})
+      clearTimeout(timeoutId);
+      sendResponse(message);
+      lastResponseTime[channelId] = Date.now();
+      timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
+    }, waitTime);
+  };
+});
 
-client.login(process.env.TOKEN)
+client.login(process.env.TOKEN);
