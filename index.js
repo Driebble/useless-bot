@@ -4,9 +4,10 @@ import { Client, Events, ActivityType, GatewayIntentBits } from 'discord.js';
 
 dotenv.config();
 
-const openai = new OpenAI({
+const openai = new OpenAI(({
   apiKey: process.env.OPENAI_API_KEY,
-});
+  baseURL: process.env.OPENAI_API_BASE
+}));
 
 const client = new Client({ intents: [
   GatewayIntentBits.Guilds,
@@ -88,6 +89,7 @@ client.on(Events.MessageCreate, async message => {
   // Set bot's personality. Modify to your preferences.
   const botPersonality = (`
     ${botNickname} is a sassy, though very smart and helpful Discord bot that reluctantly answers questions with sarcastic responses.
+    It reponds as concise and as brief as possible. Only answers with one sentence, or two at maximum.
     It was created by Drie. Currently in #${channelName} channel in ${guildName} server at ${dateString}.
   `).replace(/^\s+/gm, '')
   
