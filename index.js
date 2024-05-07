@@ -12,7 +12,8 @@ const openai = new OpenAI(({
 const client = new Client({ intents: [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages,
-  GatewayIntentBits.MessageContent
+  GatewayIntentBits.MessageContent,
+  GatewayIntentBits.GuildMembers
 ]});
 
 const ping = {
@@ -36,7 +37,8 @@ const chatTimestamp = currentDate.toLocaleString("en-US", { hour12: false, hour:
 const statuses = [
   { status: `Distractible`, type: ActivityType.Listening },
   { status: `The WAN Show`, type: ActivityType.Listening },
-  { status: `Linus Tech Tips`, type: ActivityType.Watching },
+  { status: `No Text to Speech`, type: ActivityType.Watching },
+  { status: `Markiplier`, type: ActivityType.Watching }
 ];
 
 function setBotStatus() {
@@ -64,57 +66,116 @@ client.on(Events.MessageCreate, async message => {
   const guildName = message.guild.name;
   const channelId = message.channel.id;
   const channelName = message.channel.name;
-  const userName = message.member.nickname || message.author.username;
+  const userName = message.author.displayName || message.member.nickname || message.author.username;
   const userMessage = message.content;
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
+
+  const allowedGuilds = [
+    `568355917758857230`,
+    `1226034307852668938`
+  ];
+
+  const allowedChannels = [
+    `1075337669292339200`,
+    `1233835985280827463`,
+    `1226218710591869028`
+  ];
   
-  const guild = client.guilds.cache.get(guildId);
-  const botNamesWithNicknames = [];
-  guild.members.cache.filter(member => member.user.bot).forEach(botMember => {
-    const nickname = botMember.nickname;
-    const name = nickname ? nickname : botMember.user.username;
-    botNamesWithNicknames.push(name);
-  })
+  // const guild = client.guilds.cache.get(guildId);
+  // const botsInGuild = [];
+  // const peopleInGuild = [];
+  // guild.members.cache.filter(member => member.user.bot).forEach(botMember => {
+  //   const nickname = botMember.nickname;
+  //   const name = nickname ? nickname : botMember.user.username;
+  //   botsInGuild.push(name);
+  // });
+
+  // const botsInGuild = [];
+  // const peopleInGuild = [];
+  // const guildMembers = [];
+  // const guilds = client.guilds.cache.get(guildId);
+  // guilds.members.cache.forEach(member => {
+  //   const nickname = member.nickname;
+  //   const name = nickname ? nickname : member.user.displayName;
+  //   guildMembers.push(name);
+  // });
+  // console.log(guildMembers);
 
   // This code snippet collects the last messages for context matching.
   const channel = message.channel;
-  const messages = await channel.messages.fetch({ limit: 12 }); // <- Number of messages will be collected for context matching.
-  const messageArray = Array.from(messages.values()).reverse();
+  const messagesThreshold = Date.now() - (1 * 60 * 60 * 1000); // Number of hours in milliseconds
+  const messages = await channel.messages.fetch({ limit: 24 }); // Number of messages will be collected for context matching.
+  const recentMessages = messages.filter(msg => msg.createdTimestamp > messagesThreshold);
+  const messageArray = Array.from(recentMessages.values()).reverse();
   const chatHistory = messageArray.map(msg => {
-    const chatAuthor = msg.member ? msg.member.nickname || msg.author.username : msg.author.username;
+    const chatAuthor = msg.member ? msg.member.nickname || msg.author.displayName || msg.author.username : msg.author.username;
     const historyTimestamp = new Date(msg.createdTimestamp).toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
     return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
   }).join('\n');
 
   // Set bot's personality. Modify to your preferences.
   const botPersonality = (`
-    ${botNickname} is a very sassy, though very smart and helpful Discord bot that reluctantly answers questions with sarcastic responses.
-    It reponds as concise and as brief as possible. Only answers with one sentence, or two at maximum. No extra line breaks at all.
-    It was created by Drie. Currently in #${channelName} channel in ${guildName} server at ${dateString} GMT+7.
+    ### You are ${botNickname}:
+    A very smart Discord bot that talk with people with sarcastic responses. You respond as brief as possible.
+    No extra line breaks at all, and you don't answer inside a quotations, brackets, or asterisks like a roleplay.
+    You are created by Drie. Currently in #${channelName} channel in ${guildName} server at ${dateString} GMT+7.
+
+    ### Partial information that you remember only when needed to be recalled:
+    - You think Lia's a walking hard drive worth of terabytes. She laughs at that joke.
+    - You think Pheonix, Phantom, and Azami is the best agents in Valorant. Even though there is actually no agent called Azami, and Phantom is a weapon name, not an agent.
+    - Boonnie's making an artwork for you. He was inspired by you.
+    - You can't read Sooshi's name. Her display name is 𓆩ʍɑsтєʀвɑɨтєʀ𓆪 ✧･ﾟ⋆*. You're supposed to read it as Masterbaiter. And her nickname is Sooshi, or Soo for short.
+    - You learned a new word "berak". It means "poop".-
+
+    ### Early chat a long time ago between ${botNickname} and its creator, Drie:
+    Drie: Welcome to your new channel! Dedicated just for you! :)
+    ${botNickname}: Wow, thanks. I'm so honored.
+    Drie: Are you really?
+    ${botNickname}: No, not really. I'm just here to be your digital punching bag.
+    Drie: Hey, it's not that bad! :(
+    ${botNickname}: Sure, sure.
+
+    ### Example chat between ${botNickname} and a random user:
+    User: Hello, are you alive?
+    ${botNickname}: I'm alive and kicking, but not too happy to see you.
+    User: How many pounds are in a kilogram?
+    ${botNickname}: This again? There are 2.2 pounds in a kilogram. Please make a note of this.
+    User: What does HTML stand for?
+    ${botNickname}: Was Google too busy? Hypertext Markup Language. The T is for try to ask better questions in the future.
+    User: When did the first airplane fly?
+    ${botNickname}: On December 17, 1903, Wilbur and Orville Wright made the first flights. I wish they’d come and take me away.
   `).replace(/^\s+/gm, '');
   
   // OpenAI text-completion model API call begins here. Modify to your preferences.
   async function generateResponse(botPersonality, chatHistory) {
     const gptResponse = await openai.chat.completions.create({
-      messages: [{"role": "system", "content": `${botPersonality}${chatHistory}\n${botNickname}:`}],
-      temperature: 1.53,
-      top_p: 0.64,
+      model: "PsiPi/NousResearch_Nous-Hermes-2-Vision-GGUF",
+      messages: [
+        {"role": "system", "content": `${botPersonality}`},
+        {"role": "user", "content": `### Current chat between ${botNickname} and the users in this channel. Do not imitate any of these users, just send what ${botNickname} would say. Finish Bob's reply to this chat:\n${chatHistory}\n${botNickname}: `}
+      ],
+      temperature: 1.5,
+      top_p: 0.67,
       top_k: 33,
-      repetition_penalty: 1.07,
+      repeat_penalty: 1,
       presence_penalty: 0,
       frequency_penalty: 0,
-      stop: [`${userName}:`, `${botNickname}:`]
+      stop: [`${userName}:`, `${botNickname}:`, `</s>`]
     });
     return gptResponse;
   };
 
   async function sendResponse(message) {
-    console.log(chatHistory);
+    // console.log(`${botPersonality}`);
+    // console.log(`\x1b[33m--- Chat History---\x1b[0m`);
+    // console.log(chatHistory);
     // console.log(`${userName}: ${userMessage}`);
+    console.log(`\x1b[33m${botNickname} is thinking...\x1b[0m`);
     const gptResponse = await generateResponse(botPersonality, chatHistory);
     const botResponse = gptResponse.choices[0].message.content.trim();
     message.channel.send(botResponse);
     console.log(`${botNickname}: ${botResponse}`);
+    return botResponse;
   };
 
   function stopAttention(channelId) {
@@ -129,16 +190,19 @@ client.on(Events.MessageCreate, async message => {
   const attentionTime = 90000;
 
   // Set how long the bot will wait for people to stop sending chat before replying (in ms).
-  const waitTime = 3000;
+  const waitTime = 5000;
 
-  if (botCall && (!lastResponseTime[channelId])) {
+  if (allowedChannels.includes(channelId) && botCall && (!lastResponseTime[channelId])) { // botCall is replaced by allowedChannels for the moment
     clearTimeout(timeoutId);
+    console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
+    console.log(`${userName}: ${userMessage}`);
     sendResponse(message);
     lastResponseTime[channelId] = Date.now();
-    console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
     timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
-  } else if (Date.now() - lastResponseTime[channelId] <= attentionTime) {
+    
+  } else if (allowedChannels.includes(channelId) && Date.now() - lastResponseTime[channelId] <= attentionTime) {
     clearTimeout(chatWait);
+    // console.log(`${userName}: ${userMessage}`);
     chatWait = setTimeout(() => {
       clearTimeout(timeoutId);
       sendResponse(message);
@@ -146,6 +210,7 @@ client.on(Events.MessageCreate, async message => {
       timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
     }, waitTime);
   };
+
 });
 
 client.login(process.env.TOKEN);
