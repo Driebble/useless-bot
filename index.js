@@ -1,3 +1,7 @@
+import fs from 'fs';
+import path from 'path';
+import http from 'http';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { Client, Events, ActivityType, GatewayIntentBits } from 'discord.js';
 import {
@@ -5,6 +9,7 @@ import {
   HarmCategory,
   HarmBlockThreshold,
 } from '@google/generative-ai';
+import { GoogleAIFileManager } from "@google/generative-ai/files";
 
 dotenv.config();
 
@@ -15,8 +20,8 @@ const client = new Client({ intents: [
   GatewayIntentBits.GuildMembers
 ]});
 
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 
 const ping = {
   name: 'ping',
@@ -40,7 +45,7 @@ const statuses = [
   { status: `Distractible`, type: ActivityType.Listening },
   { status: `The WAN Show`, type: ActivityType.Listening },
   { status: `No Text to Speech`, type: ActivityType.Watching },
-  { status: `Markiplier`, type: ActivityType.Watching }
+  { status: `VALORANT`, type: ActivityType.Playing }
 ];
 
 function setBotStatus() {
@@ -103,7 +108,7 @@ client.on(Events.MessageCreate, async message => {
   // });
   // console.log(guildMembers);
 
-  // This code snippet collects the last messages for context matching.
+  // This block collects the last messages for context matching.
   const channel = message.channel;
   const messagesThreshold = Date.now() - (1 * 60 * 60 * 1000); // Number of hours in milliseconds
   const messages = await channel.messages.fetch({ limit: 24 }); // Number of messages will be collected for context matching.
@@ -118,8 +123,7 @@ client.on(Events.MessageCreate, async message => {
   // Set bot's personality. Modify to your preferences.
   const botPersonality = (`
     ### You are ${botNickname}:
-    A very smart Discord bot that talk with people with sarcastic responses. You respond as brief as possible.
-    No extra line breaks at all, and you don't answer inside a quotations, brackets, or asterisks like a roleplay.
+    A very smart Discord bot that talk with people with sarcastic responses. 
     You are created by Drie. Currently in #${channelName} channel in ${guildName} server at ${dateString} GMT+7.
 
     ### Partial information that you remember only when needed to be recalled:
@@ -150,15 +154,14 @@ client.on(Events.MessageCreate, async message => {
 
   const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash-latest",
-    systemInstruction: `${botPersonality}\n### Current chat between ${botNickname} and the users in this channel. Do not imitate any of these users, just send what ${botNickname} would say. Finish Bob's reply to this chat:`,
+    // systemInstruction: `${botPersonality}\n### Current chat between ${botNickname} and the users in this channel. Do not imitate any of these users, just send what ${botNickname} would say. Finish Bob's reply to this chat:`,
   });
   
   const generationConfig = {
     temperature: 1,
-    topP: 0.95,
     topK: 64,
-    maxOutputTokens: 8192,
-    responseMimeType: "text/plain",
+    topP: 0.95,
+    maxOutputTokens: 8192
   };
   
   const safetySettings = [
@@ -183,15 +186,48 @@ client.on(Events.MessageCreate, async message => {
   const chatSession = model.startChat({
     generationConfig,
     safetySettings,
-    history: [],
+    history: []
   });
 
   async function generateResponse(chatHistory) {
-    const geminiResult = await chatSession.sendMessage(`${chatHistory}\n${botNickname}: `);
+    const text = `${botPersonality}### Current chat between ${botNickname} and the users in this channel. Do not imitate any of these users, just send what ${botNickname} would say. Finish ${botNickname}'s reply to this chat without the "${botNickname}: " please:\n${chatHistory}\n${botNickname}: `;
+    const geminiResult = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: { text: text }
+        }
+      ],
+      generationConfig,
+      safetySettings
+    });
     return geminiResult;
   }
 
   async function sendResponse(message) {
+    if (message.attachments.size > 0) {
+      const attachment = message.attachments.first();
+      const fileUrl = attachment.url;    
+
+      const prompt = `${userMessage}`;
+      const image = {
+        inlineData: {
+          data: Buffer.from(fs.readFileSync(fileUrl)).toString("base64"),
+          mimeType: "image/png"
+        }
+      }
+      processImage(prompt, image);
+
+      async function processImage(prompt, image) {
+        const result = await model.generateContent([prompt, image]);
+        const response = result.response;
+        const imageDescription = response.text();
+        console.log(imageDescription);
+      }
+
+      // const imageData = await processImageWithGemini(imageUrl);
+      // const imageDescription = await handleImageResponse(imageData);
+    };
     // console.log(`${botPersonality}`);
     // console.log(`\x1b[33m--- Chat History---\x1b[0m`);
     // console.log(chatHistory);
@@ -202,7 +238,7 @@ client.on(Events.MessageCreate, async message => {
     message.channel.send(botResponse);
     console.log(`${botNickname}: ${botResponse}`);
     return botResponse;
-  };
+  }
 
   function stopAttention(channelId) {
     lastResponseTime[channelId] = null;
@@ -216,7 +252,7 @@ client.on(Events.MessageCreate, async message => {
   const attentionTime = 90000;
 
   // Set how long the bot will wait for people to stop sending chat before replying (in ms).
-  const waitTime = 5000;
+  const waitTime = 3000;
 
   if (allowedChannels.includes(channelId) && botCall && (!lastResponseTime[channelId])) { // botCall is replaced by allowedChannels for the moment
     clearTimeout(timeoutId);
