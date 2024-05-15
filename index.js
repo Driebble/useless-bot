@@ -1,13 +1,12 @@
 import dotenv from 'dotenv';
-import OpenAI from 'openai';
 import { Client, Events, ActivityType, GatewayIntentBits } from 'discord.js';
+import {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+} from '@google/generative-ai';
 
 dotenv.config();
-
-const openai = new OpenAI(({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_API_BASE
-}));
 
 const client = new Client({ intents: [
   GatewayIntentBits.Guilds,
@@ -15,6 +14,9 @@ const client = new Client({ intents: [
   GatewayIntentBits.MessageContent,
   GatewayIntentBits.GuildMembers
 ]});
+
+const apiKey = process.env.GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(apiKey);
 
 const ping = {
   name: 'ping',
@@ -122,10 +124,10 @@ client.on(Events.MessageCreate, async message => {
 
     ### Partial information that you remember only when needed to be recalled:
     - You think Lia's a walking hard drive worth of terabytes. She laughs at that joke.
-    - You think Pheonix, Phantom, and Azami is the best agents in Valorant. Even though there is actually no agent called Azami, and Phantom is a weapon name, not an agent.
     - Boonnie's making an artwork for you. He was inspired by you.
     - You can't read Sooshi's name. Her display name is 𓆩ʍɑsтєʀвɑɨтєʀ𓆪 ✧･ﾟ⋆*. You're supposed to read it as Masterbaiter. And her nickname is Sooshi, or Soo for short.
     - You learned a new word "berak". It means "poop".-
+    - We asked what's the best Valorang agents and you think Pheonix, Phantom, and Azami is the best agents in Valorant. Even though there is actually no agent called Azami, and Phantom is a weapon name, not an agent.
 
     ### Early chat a long time ago between ${botNickname} and its creator, Drie:
     Drie: Welcome to your new channel! Dedicated just for you! :)
@@ -145,25 +147,49 @@ client.on(Events.MessageCreate, async message => {
     User: When did the first airplane fly?
     ${botNickname}: On December 17, 1903, Wilbur and Orville Wright made the first flights. I wish they’d come and take me away.
   `).replace(/^\s+/gm, '');
+
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash-latest",
+    systemInstruction: `${botPersonality}\n### Current chat between ${botNickname} and the users in this channel. Do not imitate any of these users, just send what ${botNickname} would say. Finish Bob's reply to this chat:`,
+  });
   
-  // OpenAI text-completion model API call begins here. Modify to your preferences.
-  async function generateResponse(botPersonality, chatHistory) {
-    const gptResponse = await openai.chat.completions.create({
-      model: "PsiPi/NousResearch_Nous-Hermes-2-Vision-GGUF",
-      messages: [
-        {"role": "system", "content": `${botPersonality}`},
-        {"role": "user", "content": `### Current chat between ${botNickname} and the users in this channel. Do not imitate any of these users, just send what ${botNickname} would say. Finish Bob's reply to this chat:\n${chatHistory}\n${botNickname}: `}
-      ],
-      temperature: 1.5,
-      top_p: 0.67,
-      top_k: 33,
-      repeat_penalty: 1,
-      presence_penalty: 0,
-      frequency_penalty: 0,
-      stop: [`${userName}:`, `${botNickname}:`, `</s>`]
-    });
-    return gptResponse;
+  const generationConfig = {
+    temperature: 1,
+    topP: 0.95,
+    topK: 64,
+    maxOutputTokens: 8192,
+    responseMimeType: "text/plain",
   };
+  
+  const safetySettings = [
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+  ];
+  
+  const chatSession = model.startChat({
+    generationConfig,
+    safetySettings,
+    history: [],
+  });
+
+  async function generateResponse(chatHistory) {
+    const geminiResult = await chatSession.sendMessage(`${chatHistory}\n${botNickname}: `);
+    return geminiResult;
+  }
 
   async function sendResponse(message) {
     // console.log(`${botPersonality}`);
@@ -171,8 +197,8 @@ client.on(Events.MessageCreate, async message => {
     // console.log(chatHistory);
     // console.log(`${userName}: ${userMessage}`);
     console.log(`\x1b[33m${botNickname} is thinking...\x1b[0m`);
-    const gptResponse = await generateResponse(botPersonality, chatHistory);
-    const botResponse = gptResponse.choices[0].message.content.trim();
+    const aiResponse = await generateResponse(chatHistory);
+    const botResponse = aiResponse.response.text().trim();
     message.channel.send(botResponse);
     console.log(`${botNickname}: ${botResponse}`);
     return botResponse;
