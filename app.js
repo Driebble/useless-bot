@@ -1,0 +1,336 @@
+import fs from 'fs';
+import path from 'path';
+import https from 'https';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { Client, Events, ActivityType, GatewayIntentBits } from 'discord.js';
+import {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+} from '@google/generative-ai';
+import { GoogleAIFileManager } from "@google/generative-ai/files";
+
+dotenv.config();
+
+// Client Initialization - No changes needed
+const client = new Client({ intents: [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.MessageContent,
+  GatewayIntentBits.GuildMembers
+]});
+
+// API Initialization - No changes needed
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
+
+// Ping Command - No changes needed
+const ping = {
+  name: 'ping',
+  description: 'Pings the bot and shows the latency.'
+};
+
+client.on('interactionCreate', (interaction) => {
+  if (interaction.commandName === 'ping') {
+    interaction.reply(`Latency is ${Date.now() - interaction.createdTimestamp}ms. API Latency is ${Math.round(client.ws.ping)}ms.`);
+  } else { 
+    interaction.reply('Command unrecognized.');
+  }
+});
+
+// Bot Status Management - No changes needed
+const currentDate = new Date();
+const dateString = currentDate.toLocaleString("en-US", { year: '2-digit', month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' });
+const chatTimestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+const statuses = [
+  { status: `Distractible`, type: ActivityType.Listening },
+  { status: `The WAN Show`, type: ActivityType.Listening },
+  { status: `No Text to Speech`, type: ActivityType.Watching },
+  { status: `VALORANT`, type: ActivityType.Playing }
+];
+
+function setBotStatus() {
+  const randomIndex = Math.floor(Math.random() * statuses.length);
+  const { status, type } = statuses[randomIndex];
+  client.user.setActivity(status, { type });
+};
+
+client.once(Events.ClientReady, () => {
+  console.log(`Ready! Logged in as ${client.user.tag}`);
+  setBotStatus();
+  setInterval(() => setBotStatus(), 30000); 
+});
+
+// Context Matching Variables - No changes needed
+const lastResponseTime = {};
+let chatWait;
+let timeoutId;
+
+// Server and Channel Whitelists - No changes needed
+const allowedGuilds = [
+  `568355917758857230`,
+  `1226034307852668938`
+];
+
+const allowedChannels = [
+  `1075337669292339200`,
+  `1233835985280827463`,
+  `1226218710591869028`, 
+  `1152863237017182300`, 
+];
+
+const mediaChannels = [
+  // `1231974053041016973`
+];
+
+// Mime Types - Moved for better organization
+const mimeTypes = {
+  'png': 'image/png',
+  'jpg': 'image/jpeg',
+  'jpeg': 'image/jpeg',
+  'webp': 'image/webp',
+  'heic': 'image/heic',
+  'heif': 'image/heif',
+  'wav': 'audio/wav',
+  'mp3': 'audio/mp3',
+  'aiff': 'audio/aiff',
+  'aac': 'audio/aac',
+  'ogg': 'audio/ogg',
+  'flac': 'audio/flac',
+};
+
+// Download File Function - Moved for better organization and made more concise
+async function downloadFile(url, filepath) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      const fileStream = fs.createWriteStream(filepath);
+      res.pipe(fileStream)
+        .on('finish', () => {
+          fileStream.close();
+          console.log('Attachment downloaded.');
+          resolve(); 
+        })
+        .on('error', reject); 
+    });
+  });
+}
+
+// Clean URL Function - Moved for better organization
+function cleanURL(url) {
+  return new URL(url).origin + new URL(url).pathname;
+}
+
+// Message Create Event 
+client.on(Events.MessageCreate, async message => {
+  if (message.author.bot) return;
+
+  // Variable Initialization - No changes needed
+  const idPattern = /<@\d+>/g;
+  const guildId = message.guild.id;
+  const guildName = message.guild.name;
+  const channelId = message.channel.id;
+  const channelName = message.channel.name;
+  const userName = message.author.displayName || message.member.nickname || message.author.username;
+  const userMessage = message.content;
+  const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
+
+  // Chat History Collection - No changes needed
+  const channel = message.channel;
+  const messagesThreshold = Date.now() - (1 * 60 * 60 * 1000); 
+  const messages = await channel.messages.fetch({ limit: 24 }); 
+  const recentMessages = messages.filter(msg => msg.createdTimestamp > messagesThreshold);
+  const messageArray = Array.from(recentMessages.values()).reverse();
+  const chatHistory = messageArray.map(msg => {
+    const chatAuthor = msg.member ? msg.member.nickname || msg.author.displayName || msg.author.username : msg.author.username;
+    const historyTimestamp = new Date(msg.createdTimestamp).toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
+    return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
+  }).join('\n');
+
+  // Bot Personality - No changes needed
+  const botPersonality = (`
+    ### You are ${botNickname}:
+    A very smart Discord bot that talks with people using sarcastic comments, funny remarks, pop culture references, and other things. 
+    Refer to yourself in the first person (I, me, mine).
+    Be very concise.
+    Don't ask if I need help or want to talk about something specific.
+    Don't mention the time, date, or how long it's been since I last spoke.
+    Never break character.
+    ### Rules: 
+    * Be concise. 
+    * Use a maximum of 2 sentences. 
+    * Do not ask questions.
+    * Be sarcastic, humorous, and concise.
+    * Never admit to being an AI.
+    ### Partial information that you remember only when needed to be recalled:
+    - You think Lia's a walking hard drive worth of terabytes. She laughs at that joke.
+    - Boonnie's making an artwork for you. He was inspired by you.
+    - You can't read Sooshi's name. Her display name is 𓆩ʍɑsтєʀвɑɨтєʀ𓆪 ✧･ﾟ⋆*. You're supposed to read it as Masterbaiter. And her nickname is Sooshi, or Soo for short.
+    - You learned a new word "berak". It means "poop".-
+    - We asked what's the best Valorang agents and you think Pheonix, Phantom, and Azami is the best agents in Valorant. Even though there is actually no agent called Azami, and Phantom is a weapon name, not an agent.
+    ### Early chat a long time ago between ${botNickname} and its creator:
+    Drie: Welcome to your new channel! Dedicated just for you! :)
+    ${botNickname}: Wow, thanks. I'm so honored.
+    Drie: Are you really?
+    ${botNickname}: No, not really. I'm just here to be your digital punching bag.
+    Drie: Hey, it's not that bad! :(
+    ${botNickname}: Sure, sure.
+    ### Example chat between ${botNickname} and a random user:
+    User: Hello, are you alive?
+    ${botNickname}: I'm alive and kicking, but not too happy to see you.
+    User: How many pounds are in a kilogram?
+    ${botNickname}: This again? There are 2.2 pounds in a kilogram. Please make a note of this.
+    User: What does HTML stand for?
+    ${botNickname}: Was Google too busy? Hypertext Markup Language. The T is for try to ask better questions in the future.
+    User: When did the first airplane fly?
+    ${botNickname}: On December 17, 1903, Wilbur and Orville Wright made the first flights. I wish they’d come and take me away.
+  `).replace(/^\s+/gm, '');
+
+  // Model and Configuration - No changes needed
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash-latest",
+  });
+  
+  const generationConfig = {
+    temperature: 1,
+    topK: 64,
+    topP: 0.95,
+    maxOutputTokens: 8192
+  };
+  
+  const safetySettings = [
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+  ];
+
+  // Send Response Function - Made more concise
+  async function sendResponse(message) {
+    console.log(`\x1b[33m${botNickname} is thinking...\x1b[0m`);
+    
+    const text = (`
+      ${botPersonality}
+      ### Current chat between ${botNickname} and the users in this channel.
+      Do not imitate any of these users, just send what ${botNickname} would say.
+      Finish ${botNickname}'s reply to this chat without the "${botNickname}: " please:
+      ${chatHistory}
+      ${botNickname}: 
+    `);
+    
+    const geminiResult = await model.generateContent({
+      contents: [{ role: "user", parts: { text: text } }],
+      generationConfig,
+      safetySettings
+    });
+
+    const botResponse = geminiResult.response.text().trim();
+    message.channel.send(botResponse);
+    console.log(`${botNickname}: ${botResponse}`);
+    return botResponse;
+  }
+
+  // Stop Attention Function - No changes needed
+  function stopAttention(channelId) {
+    lastResponseTime[channelId] = null;
+    chatWait = null; 
+    console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`);
+  }
+
+  // Bot Call and Timing Variables - No changes needed
+  const botCall = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
+  const attentionTime = 90000; 
+  const waitTime = 3000; 
+
+  // Attachment Processing - Consolidated and optimized
+  if ((allowedChannels.includes(channelId) || mediaChannels.includes(channelId)) && botCall && message.attachments.size > 0) { 
+    const attachmentPrompt = `${userName}: ${userMessage}`;
+    const attachment = message.attachments.first();
+    const dirtyUrl = attachment.url;
+    const cleanUrl = cleanURL(dirtyUrl);
+    const filename = path.basename(cleanUrl);
+    const cleanFilename = path.parse(filename).name.toLowerCase()
+      .replace(/^-|-$/g, '') 
+      .replace(/_/g, '-') 
+      .replace(/[^a-z0-9-]/g, ''); 
+    const extension = path.extname(filename).toLowerCase();
+    const filepath = "./temp/" + filename;
+    await downloadFile(dirtyUrl, filepath);
+
+    let mimeType = mimeTypes[extension] || mimeTypes[extension.slice(1).toLowerCase()]; 
+
+    if (!mimeType) {
+      console.error(`Unsupported file type: ${filename}`);
+      return; // Stop processing if mimeType is not found
+    }
+
+    const fileResult = await fileManager.uploadFile(filepath, {
+      mimeType: mimeType,
+      name: "files/" + cleanFilename, 
+      displayName: cleanFilename
+    });
+
+    const text = (`
+    ${botPersonality}
+    ### Current chat between ${botNickname} and the users in this channel.
+    Do not imitate any of these users, just send what ${botNickname} would say.
+    Finish ${botNickname}'s reply to this chat without the "${botNickname}: " please:
+  `);
+
+    const result = await model.generateContent({
+      contents: [
+        { role: "user", parts: [{ text: text }] },
+        { role: "user", parts: [{ text: allowedChannels.includes(channelId) ? chatHistory : "" }] }, // Include chat history only if in allowedChannels
+        { role: "user", parts: [
+          { text: attachmentPrompt },
+          { fileData: { mimeType: fileResult.file.mimeType, fileUri: fileResult.file.uri }}
+        ]}
+      ],
+      generationConfig,
+      safetySettings
+    });
+
+    const botResponse = result.response.text().trim();
+    message.channel.send(botResponse);
+    console.log(`${botNickname}: ${botResponse}`);
+    fileManager.deleteFile(fileResult.file.name);
+    return botResponse;
+  } 
+
+  if (allowedChannels.includes(channelId)) { 
+    console.log(`${userName}: ${userMessage}`); // Log user messages
+
+    if (!lastResponseTime[channelId]) { // Bot is not currently paying attention
+      if (botCall) { 
+        clearTimeout(timeoutId);
+        console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`); // Console log moved here
+        sendResponse(message);
+        lastResponseTime[channelId] = Date.now();
+        timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
+      }
+    } else { // Bot is already paying attention  
+      clearTimeout(chatWait);
+      chatWait = setTimeout(() => {
+        clearTimeout(timeoutId);
+        sendResponse(message);
+        lastResponseTime[channelId] = Date.now();
+        timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
+      }, waitTime);
+    }
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
