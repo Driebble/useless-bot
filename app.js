@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
-import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { Client, Events, ActivityType, GatewayIntentBits } from 'discord.js';
 import {
@@ -13,7 +12,7 @@ import { GoogleAIFileManager } from "@google/generative-ai/files";
 
 dotenv.config();
 
-// Client Initialization - No changes needed
+// Client Initialization
 const client = new Client({ intents: [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages,
@@ -21,11 +20,11 @@ const client = new Client({ intents: [
   GatewayIntentBits.GuildMembers
 ]});
 
-// API Initialization - No changes needed
+// API Initialization
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 
-// Ping Command - No changes needed
+// Ping Command
 const ping = {
   name: 'ping',
   description: 'Pings the bot and shows the latency.'
@@ -39,10 +38,21 @@ client.on('interactionCreate', (interaction) => {
   }
 });
 
-// Bot Status Management - No changes needed
+// Data Management
 const currentDate = new Date();
-const dateString = currentDate.toLocaleString("en-US", { year: '2-digit', month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit' });
-const chatTimestamp = currentDate.toLocaleString("en-US", { hour12: false, hour: '2-digit', minute: '2-digit' });
+const dateString = currentDate.toLocaleString("en-US", { 
+  year: '2-digit', 
+  month: '2-digit', 
+  day: '2-digit', 
+  hour12: false, 
+  hour: '2-digit', 
+  minute: '2-digit' 
+});
+const chatTimestamp = currentDate.toLocaleString("en-US", { 
+  hour12: false, 
+  hour: '2-digit', 
+  minute: '2-digit' 
+});
 
 const statuses = [
   { status: `Distractible`, type: ActivityType.Listening },
@@ -63,12 +73,12 @@ client.once(Events.ClientReady, () => {
   setInterval(() => setBotStatus(), 30000); 
 });
 
-// Context Matching Variables - No changes needed
+// Context Matching Variables
 const lastResponseTime = {};
 let chatWait;
 let timeoutId;
 
-// Server and Channel Whitelists - No changes needed
+// Server and Channel Whitelists
 const allowedGuilds = [
   `568355917758857230`,
   `1226034307852668938`
@@ -85,7 +95,7 @@ const mediaChannels = [
   // `1231974053041016973`
 ];
 
-// Mime Types - Moved for better organization
+// Mime Types
 const mimeTypes = {
   'png': 'image/png',
   'jpg': 'image/jpeg',
@@ -99,9 +109,18 @@ const mimeTypes = {
   'aac': 'audio/aac',
   'ogg': 'audio/ogg',
   'flac': 'audio/flac',
+  'mp4': 'video/mp4',
+  'mpg': 'video/mpg',
+  'mpeg': 'video/mpeg',
+  'mov': 'video/mov',
+  'avi': 'video/avi',
+  'flv': 'video/x-flv',
+  'webm': 'video/webm',
+  'wmv': 'video/wmv',
+  '3gp': 'video/3gpp'
 };
 
-// Download File Function - Moved for better organization and made more concise
+// Download File Function
 async function downloadFile(url, filepath) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
@@ -117,7 +136,7 @@ async function downloadFile(url, filepath) {
   });
 }
 
-// Clean URL Function - Moved for better organization
+// Clean URL Function
 function cleanURL(url) {
   return new URL(url).origin + new URL(url).pathname;
 }
@@ -126,7 +145,7 @@ function cleanURL(url) {
 client.on(Events.MessageCreate, async message => {
   if (message.author.bot) return;
 
-  // Variable Initialization - No changes needed
+  // Variable Initialization
   const idPattern = /<@\d+>/g;
   const guildId = message.guild.id;
   const guildName = message.guild.name;
@@ -136,7 +155,7 @@ client.on(Events.MessageCreate, async message => {
   const userMessage = message.content;
   const botNickname = message.guild.members.me.nickname || message.guild.members.me.user.username;
 
-  // Chat History Collection - No changes needed
+  // Chat History Collection
   const channel = message.channel;
   const messagesThreshold = Date.now() - (1 * 60 * 60 * 1000); 
   const messages = await channel.messages.fetch({ limit: 24 }); 
@@ -148,7 +167,7 @@ client.on(Events.MessageCreate, async message => {
     return `${chatAuthor}: ${msg.content.replace(idPattern, "").trim()}`;
   }).join('\n');
 
-  // Bot Personality - No changes needed
+  // Bot Personality
   const botPersonality = (`
     ### You are ${botNickname}:
     A very smart Discord bot that talks with people using sarcastic comments, funny remarks, pop culture references, and other things. 
@@ -158,8 +177,9 @@ client.on(Events.MessageCreate, async message => {
     Don't mention the time, date, or how long it's been since I last spoke.
     Never break character.
     ### Rules: 
-    * Be concise. 
-    * Use a maximum of 2 sentences. 
+    * Be concise.
+    * Use a maximum of 2 sentences.
+    * Avoid inputting a double space.
     * Do not ask questions.
     * Be sarcastic, humorous, and concise.
     * Never admit to being an AI.
@@ -187,7 +207,7 @@ client.on(Events.MessageCreate, async message => {
     ${botNickname}: On December 17, 1903, Wilbur and Orville Wright made the first flights. I wish they’d come and take me away.
   `).replace(/^\s+/gm, '');
 
-  // Model and Configuration - No changes needed
+  // Model and Configuration
   const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash-latest",
   });
@@ -218,7 +238,7 @@ client.on(Events.MessageCreate, async message => {
     },
   ];
 
-  // Send Response Function - Made more concise
+  // Send Response Function
   async function sendResponse(message) {
     console.log(`\x1b[33m${botNickname} is thinking...\x1b[0m`);
     
@@ -231,31 +251,37 @@ client.on(Events.MessageCreate, async message => {
       ${botNickname}: 
     `);
     
-    const geminiResult = await model.generateContent({
-      contents: [{ role: "user", parts: { text: text } }],
-      generationConfig,
-      safetySettings
-    });
-
-    const botResponse = geminiResult.response.text().trim();
-    message.channel.send(botResponse);
-    console.log(`${botNickname}: ${botResponse}`);
-    return botResponse;
+    try {
+      const geminiResult = await model.generateContent({
+        contents: [{ role: "user", parts: { text: text } }],
+        generationConfig,
+        safetySettings
+      });
+  
+      const botResponse = geminiResult.response.text().trim();
+      message.channel.send(botResponse);
+      console.log(`${botNickname}: ${botResponse}`);
+      return botResponse;
+  
+    } catch (error) {
+      console.error("Error generating content:", error);
+      return null; // Return null to indicate an error occurred
+    }
   }
 
-  // Stop Attention Function - No changes needed
+  // Stop Attention Function
   function stopAttention(channelId) {
     lastResponseTime[channelId] = null;
     chatWait = null; 
     console.log(`\x1b[31m${botNickname} has stopped paying attention to #${channelName}.\x1b[0m`);
   }
 
-  // Bot Call and Timing Variables - No changes needed
+  // Bot Call and Timing Variables
   const botCall = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
   const attentionTime = 90000; 
   const waitTime = 3000; 
 
-  // Attachment Processing - Consolidated and optimized
+  // Attachment Processing
   if ((allowedChannels.includes(channelId) || mediaChannels.includes(channelId)) && botCall && message.attachments.size > 0) { 
     const attachmentPrompt = `${userName}: ${userMessage}`;
     const attachment = message.attachments.first();
@@ -275,40 +301,63 @@ client.on(Events.MessageCreate, async message => {
     if (!mimeType) {
       console.error(`Unsupported file type: ${filename}`);
       return; // Stop processing if mimeType is not found
-    }
+    }    
 
-    const fileResult = await fileManager.uploadFile(filepath, {
-      mimeType: mimeType,
-      name: "files/" + cleanFilename, 
-      displayName: cleanFilename
-    });
+    let fileResult = null; // Initialize fileResult
+
+    try {
+      fileResult = await fileManager.uploadFile(filepath, {
+        mimeType: mimeType,
+        name: "files/" + cleanFilename,
+        displayName: cleanFilename
+      });
+
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      try {        
+        fileManager.deleteFile(fileResult.file.name);
+        console.log("File deleted from Gemini.")
+      } catch (error) {        
+        console.error("Error uploading file:", error);
+        return null;
+      }
+    }
 
     const text = (`
     ${botPersonality}
-    ### Current chat between ${botNickname} and the users in this channel.
-    Do not imitate any of these users, just send what ${botNickname} would say.
-    Finish ${botNickname}'s reply to this chat without the "${botNickname}: " please:
-  `);
+      ### Current chat between ${botNickname} and the users in this channel.
+      Do not imitate any of these users, just send what ${botNickname} would say.
+      Finish ${botNickname}'s reply to this chat without the "${botNickname}: " please:
+    `);
 
-    const result = await model.generateContent({
-      contents: [
-        { role: "user", parts: [{ text: text }] },
-        { role: "user", parts: [{ text: allowedChannels.includes(channelId) ? chatHistory : "" }] }, // Include chat history only if in allowedChannels
-        { role: "user", parts: [
-          { text: attachmentPrompt },
-          { fileData: { mimeType: fileResult.file.mimeType, fileUri: fileResult.file.uri }}
-        ]}
-      ],
-      generationConfig,
-      safetySettings
-    });
-
-    const botResponse = result.response.text().trim();
-    message.channel.send(botResponse);
-    console.log(`${botNickname}: ${botResponse}`);
-    fileManager.deleteFile(fileResult.file.name);
-    return botResponse;
-  } 
+    try {
+      const result = await model.generateContent({
+        contents: [
+          { role: "user", parts: [{ text: text }] },
+          { role: "user", parts: [{ text: allowedChannels.includes(channelId) ? chatHistory : "" }] }, // Include chat history only if in allowedChannels
+          { role: "user", parts: [
+            { text: attachmentPrompt },
+            { fileData: { mimeType: fileResult.file.mimeType, fileUri: fileResult.file.uri }}
+          ]}
+        ],
+        generationConfig,
+        safetySettings
+      });
+  
+      const botResponse = result.response.text().trim();
+      message.channel.send(botResponse);
+      console.log(`${botNickname}: ${botResponse}`);
+      fileManager.deleteFile(fileResult.file.name);
+      console.log("File deleted from Gemini.")
+      return botResponse;
+  
+    } catch (error) {
+      console.error("Error generating content:", error);
+      fileManager.deleteFile(fileResult.file.name);
+      console.log("File deleted from Gemini.")
+      return null; // Return null to indicate an error occurred
+    }
+  }
 
   if (allowedChannels.includes(channelId)) { 
     console.log(`${userName}: ${userMessage}`); // Log user messages

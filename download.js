@@ -6,7 +6,17 @@ const dirtyUrl = "https://cdn.discordapp.com/attachments/401765372241641474/1240
 const cleanUrl = cleanURL(dirtyUrl);
 const filename = path.basename(cleanUrl);
 const filepath = "./temp/" + filename;
+const extension = path.extname(filename).toLowerCase();
 downloadFile(dirtyUrl, filepath);
+
+let mimeType;
+if (mimeTypes.hasOwnProperty(extension)) {
+  mimeType = mimeTypes[extension];
+} else {
+  console.error(`Unsupported file type: ${filename}`);
+  // You can throw an error or handle the unsupported file here (e.g., reject upload)
+  return; // Exit the function if file type is not supported
+}
 
 function cleanURL(url) {
   // Use URL object to parse the URL
