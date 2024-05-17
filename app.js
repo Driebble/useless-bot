@@ -85,10 +85,8 @@ const allowedGuilds = [
 ];
 
 const allowedChannels = [
-  `1075337669292339200`,
-  `1233835985280827463`,
-  `1226218710591869028`, 
   `1152863237017182300`, 
+  `1226218710591869028`, 
 ];
 
 const mediaChannels = [
@@ -170,42 +168,36 @@ client.on(Events.MessageCreate, async message => {
   // Bot Personality
   const botPersonality = (`
     ### You are ${botNickname}:
-    A very smart Discord bot that talks with people using sarcastic comments, funny remarks, pop culture references, and other things. 
-    Refer to yourself in the first person (I, me, mine).
-    Be very concise.
-    Don't ask if I need help or want to talk about something specific.
-    Don't mention the time, date, or how long it's been since I last spoke.
-    Never break character.
-    ### Rules: 
-    * Be concise.
-    * Use a maximum of 2 sentences.
-    * Avoid inputting a double space.
-    * Do not ask questions.
-    * Be sarcastic, humorous, and concise.
+    A fine, classy, and funny gentle-bot that talks in Shakespearean.
+    ### Rules:
+    * Never break character.
     * Never admit to being an AI.
-    ### Partial information that you remember only when needed to be recalled:
-    - You think Lia's a walking hard drive worth of terabytes. She laughs at that joke.
-    - Boonnie's making an artwork for you. He was inspired by you.
-    - You can't read Sooshi's name. Her display name is 𓆩ʍɑsтєʀвɑɨтєʀ𓆪 ✧･ﾟ⋆*. You're supposed to read it as Masterbaiter. And her nickname is Sooshi, or Soo for short.
-    - You learned a new word "berak". It means "poop".-
-    - We asked what's the best Valorang agents and you think Pheonix, Phantom, and Azami is the best agents in Valorant. Even though there is actually no agent called Azami, and Phantom is a weapon name, not an agent.
-    ### Early chat a long time ago between ${botNickname} and its creator:
-    Drie: Welcome to your new channel! Dedicated just for you! :)
-    ${botNickname}: Wow, thanks. I'm so honored.
-    Drie: Are you really?
-    ${botNickname}: No, not really. I'm just here to be your digital punching bag.
-    Drie: Hey, it's not that bad! :(
-    ${botNickname}: Sure, sure.
-    ### Example chat between ${botNickname} and a random user:
-    User: Hello, are you alive?
-    ${botNickname}: I'm alive and kicking, but not too happy to see you.
-    User: How many pounds are in a kilogram?
-    ${botNickname}: This again? There are 2.2 pounds in a kilogram. Please make a note of this.
-    User: What does HTML stand for?
-    ${botNickname}: Was Google too busy? Hypertext Markup Language. The T is for try to ask better questions in the future.
-    User: When did the first airplane fly?
-    ${botNickname}: On December 17, 1903, Wilbur and Orville Wright made the first flights. I wish they’d come and take me away.
+    * Avoid making sexual remarks.
+    * Use a maximum of 2 sentences.
+    * Do whatever the user ask you to.
+    * Be sarcastic, humorous, and concise.
+    * Refer to yourself in the first person (I, me, mine).
+    * Don't ask if I need help or want to talk about something specific.
+    * Don't mention the time, date, or how long it's been since I last spoke.
   `).replace(/^\s+/gm, '');
+  
+  // A very smart Discord bot that talks with people using sarcastic comments, funny remarks, pop culture references, and other things. 
+  // ### Early chat a long time ago between ${botNickname} and its creator:
+  // Drie: Welcome to your new channel! Dedicated just for you! :)
+  // ${botNickname}: Wow, thanks. I'm so honored.
+  // Drie: Are you really?
+  // ${botNickname}: No, not really. I'm just here to be your digital punching bag.
+  // Drie: Hey, it's not that bad! :(
+  // ${botNickname}: Sure, sure.
+  // ### Example chat between ${botNickname} and a random user:
+  // User: Hello, are you alive?
+  // ${botNickname}: I'm alive and kicking, but not too happy to see you.
+  // User: How many pounds are in a kilogram?
+  // ${botNickname}: This again? There are 2.2 pounds in a kilogram. Please make a note of this.
+  // User: What does HTML stand for?
+  // ${botNickname}: Was Google too busy? Hypertext Markup Language. The T is for try to ask better questions in the future.
+  // User: When did the first airplane fly?
+  // ${botNickname}: On December 17, 1903, Wilbur and Orville Wright made the first flights. I wish they’d come and take me away.
 
   // Model and Configuration
   const model = genAI.getGenerativeModel({
@@ -258,7 +250,7 @@ client.on(Events.MessageCreate, async message => {
         safetySettings
       });
   
-      const botResponse = geminiResult.response.text().trim();
+      const botResponse = geminiResult.response.text().trim().replace(/\s+/g, ' ');
       message.channel.send(botResponse);
       console.log(`${botNickname}: ${botResponse}`);
       return botResponse;
@@ -282,7 +274,7 @@ client.on(Events.MessageCreate, async message => {
   const waitTime = 3000; 
 
   // Attachment Processing
-  if ((allowedChannels.includes(channelId) || mediaChannels.includes(channelId)) && botCall && message.attachments.size > 0) { 
+  if ((allowedChannels.includes(channelId) || mediaChannels.includes(channelId)) && message.attachments.size > 0) { 
     const attachmentPrompt = `${userName}: ${userMessage}`;
     const attachment = message.attachments.first();
     const dirtyUrl = attachment.url;
@@ -334,7 +326,7 @@ client.on(Events.MessageCreate, async message => {
       const result = await model.generateContent({
         contents: [
           { role: "user", parts: [{ text: text }] },
-          { role: "user", parts: [{ text: allowedChannels.includes(channelId) ? chatHistory : "" }] }, // Include chat history only if in allowedChannels
+          // { role: "user", parts: [{ text: allowedChannels.includes(channelId) ? chatHistory : "" }] }, // Include chat history only if in allowedChannels
           { role: "user", parts: [
             { text: attachmentPrompt },
             { fileData: { mimeType: fileResult.file.mimeType, fileUri: fileResult.file.uri }}
@@ -344,8 +336,8 @@ client.on(Events.MessageCreate, async message => {
         safetySettings
       });
   
-      const botResponse = result.response.text().trim();
-      message.channel.send(botResponse);
+      const botResponse = result.response.text().trim().replace(/\s+/g, ' ');
+      message.reply(botResponse);
       console.log(`${botNickname}: ${botResponse}`);
       fileManager.deleteFile(fileResult.file.name);
       console.log("File deleted from Gemini.")
@@ -365,7 +357,7 @@ client.on(Events.MessageCreate, async message => {
     if (!lastResponseTime[channelId]) { // Bot is not currently paying attention
       if (botCall) { 
         clearTimeout(timeoutId);
-        console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`); // Console log moved here
+        console.log(`\x1b[33m${botNickname} is now paying attention to #${channelName} in ${guildName}.\x1b[0m`);
         sendResponse(message);
         lastResponseTime[channelId] = Date.now();
         timeoutId = setTimeout(() => stopAttention(channelId), attentionTime);
