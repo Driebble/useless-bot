@@ -90,7 +90,7 @@ const allowedChannels = [
 ];
 
 const mediaChannels = [
-  // `1231974053041016973`
+  `1231974053041016973`
 ];
 
 // Mime Types
@@ -126,10 +126,10 @@ async function downloadFile(url, filepath) {
       res.pipe(fileStream)
         .on('finish', () => {
           fileStream.close();
-          console.log('Attachment downloaded.');
-          resolve(); 
+          console.log('\x1b[33mAttachment downloaded.\x1b[0m');
+          resolve();
         })
-        .on('error', reject); 
+        .on('error', reject);
     });
   });
 }
@@ -170,6 +170,7 @@ client.on(Events.MessageCreate, async message => {
     ### You are ${botNickname}:
     A fine, classy, and funny gentle-bot that talks in Shakespearean.
     ### Rules:
+    * You have to rhyme.
     * Never break character.
     * Never admit to being an AI.
     * Avoid making sexual remarks.
@@ -202,6 +203,12 @@ client.on(Events.MessageCreate, async message => {
   // Model and Configuration
   const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash-latest",
+    systemInstruction: `
+      ${botPersonality}
+      ### Current chat between ${botNickname} and the users in this channel.
+      Do not imitate any of these users, just send what ${botNickname} would say.
+      Finish ${botNickname}'s reply to this chat without the "${botNickname}: " please:
+    `,
   });
   
   const generationConfig = {
@@ -222,7 +229,7 @@ client.on(Events.MessageCreate, async message => {
     },
     {
       category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
     },
     {
       category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
@@ -235,13 +242,9 @@ client.on(Events.MessageCreate, async message => {
     console.log(`\x1b[33m${botNickname} is thinking...\x1b[0m`);
     
     const text = (`
-      ${botPersonality}
-      ### Current chat between ${botNickname} and the users in this channel.
-      Do not imitate any of these users, just send what ${botNickname} would say.
-      Finish ${botNickname}'s reply to this chat without the "${botNickname}: " please:
       ${chatHistory}
       ${botNickname}: 
-    `);
+    `);.33
     
     try {
       const geminiResult = await model.generateContent({
@@ -256,7 +259,7 @@ client.on(Events.MessageCreate, async message => {
       return botResponse;
   
     } catch (error) {
-      console.error("Error generating content:", error);
+      console.error("\x1b[31mError generating content:\x1b[0m", error);
       return null; // Return null to indicate an error occurred
     }
   }
@@ -270,7 +273,7 @@ client.on(Events.MessageCreate, async message => {
 
   // Bot Call and Timing Variables
   const botCall = userMessage.toLowerCase().includes(`${botNickname.toLowerCase()}`) || message.mentions.users.has(client.user.id);
-  const attentionTime = 90000; 
+  const attentionTime = 90000;
   const waitTime = 3000; 
 
   // Attachment Processing
@@ -283,7 +286,8 @@ client.on(Events.MessageCreate, async message => {
     const cleanFilename = path.parse(filename).name.toLowerCase()
       .replace(/^-|-$/g, '') 
       .replace(/_/g, '-') 
-      .replace(/[^a-z0-9-]/g, ''); 
+      .replace(/[^a-z0-9-]/g, '')
+      .substring(0, 40);
     const extension = path.extname(filename).toLowerCase();
     const filepath = "./temp/" + filename;
     await downloadFile(dirtyUrl, filepath);
@@ -291,13 +295,14 @@ client.on(Events.MessageCreate, async message => {
     let mimeType = mimeTypes[extension] || mimeTypes[extension.slice(1).toLowerCase()]; 
 
     if (!mimeType) {
-      console.error(`Unsupported file type: ${filename}`);
+      console.error(`\x1b[31mUnsupported file type: ${filename}\x1b[0m`);
       return; // Stop processing if mimeType is not found
     }    
 
     let fileResult = null; // Initialize fileResult
 
     try {
+      console.log("\x1b[33mProcessing file on Gemini...\x1b[0m");
       fileResult = await fileManager.uploadFile(filepath, {
         mimeType: mimeType,
         name: "files/" + cleanFilename,
@@ -305,18 +310,17 @@ client.on(Events.MessageCreate, async message => {
       });
 
     } catch (error) {
-      console.error("Error uploading file:", error);
+      console.error("\x1b[31mError uploading file:\x1b[0m", error);
       try {        
         fileManager.deleteFile(fileResult.file.name);
-        console.log("File deleted from Gemini.")
+        console.log("\x1b[33mFile deleted from Gemini.\x1b[0m");
       } catch (error) {        
-        console.error("Error uploading file:", error);
+        console.error("\x1b[31mError uploading file:\x1b[0m", error);
         return null;
       }
     }
 
     const text = (`
-    ${botPersonality}
       ### Current chat between ${botNickname} and the users in this channel.
       Do not imitate any of these users, just send what ${botNickname} would say.
       Finish ${botNickname}'s reply to this chat without the "${botNickname}: " please:
@@ -339,14 +343,32 @@ client.on(Events.MessageCreate, async message => {
       const botResponse = result.response.text().trim().replace(/\s+/g, ' ');
       message.reply(botResponse);
       console.log(`${botNickname}: ${botResponse}`);
-      fileManager.deleteFile(fileResult.file.name);
-      console.log("File deleted from Gemini.")
+      fileManager.deleteFile(fileResult.file.name, (err) => {
+        if (err) {
+          console.error('Error deleting file:', err);
+        }
+      });
+      fs.unlink(filepath, (err) => {
+        if (err) {
+          console.error('Error deleting file:', err);
+        }
+      });
+      console.log("\x1b[33mFile deleted.\x1b[0m");
       return botResponse;
   
     } catch (error) {
       console.error("Error generating content:", error);
-      fileManager.deleteFile(fileResult.file.name);
-      console.log("File deleted from Gemini.")
+      fileManager.deleteFile(fileResult.file.name, (err) => {
+        if (err) {
+          console.error('Error deleting file:', err);
+        }
+      });
+      fs.unlink(filepath, (err) => {
+        if (err) {
+          console.error('Error deleting file:', err);
+        }
+      });
+      console.log("\x1b[33mFile deleted.\x1b[0m");
       return null; // Return null to indicate an error occurred
     }
   }
