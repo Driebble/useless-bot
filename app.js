@@ -139,7 +139,16 @@ function cleanURL(url) {
   return new URL(url).origin + new URL(url).pathname;
 }
 
-// Message Create Event 
+function generateRandomString(length) {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+
+// Message Create Event
 client.on(Events.MessageCreate, async message => {
   if (message.author.bot) return;
 
@@ -244,7 +253,7 @@ client.on(Events.MessageCreate, async message => {
     const text = (`
       ${chatHistory}
       ${botNickname}: 
-    `);.33
+    `);
     
     try {
       const geminiResult = await model.generateContent({
@@ -282,12 +291,13 @@ client.on(Events.MessageCreate, async message => {
     const attachment = message.attachments.first();
     const dirtyUrl = attachment.url;
     const cleanUrl = cleanURL(dirtyUrl);
-    const filename = path.basename(cleanUrl);
+    const randomString = generateRandomString(5);
+    const filename = randomString + "_" + path.basename(cleanUrl);
     const cleanFilename = path.parse(filename).name.toLowerCase()
-      .replace(/^-|-$/g, '') 
-      .replace(/_/g, '-') 
+      .replace(/^-|-$/g, '')
+      .replace(/_/g, '-')
       .replace(/[^a-z0-9-]/g, '')
-      .substring(0, 40);
+      .substring(0, 30);
     const extension = path.extname(filename).toLowerCase();
     const filepath = "./temp/" + filename;
     await downloadFile(dirtyUrl, filepath);
